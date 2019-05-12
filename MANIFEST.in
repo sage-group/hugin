@@ -1,0 +1,5 @@
+include *.yaml
+recursive-include src/spacenet **.yaml **.py
+recursive-include etc **.yaml
+recursive-include src **.py
+recursive-include src **.yaml

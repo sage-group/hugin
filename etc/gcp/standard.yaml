@@ -1,0 +1,5 @@
+trainingInput:
+  scaleTier: CUSTOM
+  masterType: standard
+  workerCount: 0
+  parameterServerCount: 0

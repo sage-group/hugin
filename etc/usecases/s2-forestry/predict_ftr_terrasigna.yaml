@@ -1,0 +1,28 @@
+data_source: !!python/object/apply:hugin.io.FileSystemLoader
+  kwds:
+    data_pattern: '(?P<id>.*)\.tiff$'
+    id_format: '{id}'
+    type_format: 'GEE'
+    input_source: /home/tardis/silviu
+ensemble:
+  method: average # voting, weighted average
+models:
+  unetv14:
+    #path: /home/tardis/marian/pycharm/data/terrasigna/test_terrasigna/hal720m-tardis.hdf5
+    path: /home/gabriel/Research/data/ML4EO_Paduri/models/ftr_terrasigna/hal720m-gabriel.hdf5
+    builder: hugin.models.unet.unetv14:unet_v14
+    type: keras
+    window_size: [256, 256]
+    stride_size: 256
+    match_id: '.*'
+    batch_size: 15
+    swap_axes: True
+    rescale: null
+    mapping:
+      inputs:
+        - [ "GEE", 3]
+        - [ "GEE", 2]
+        - [ "GEE", 1]
+        - [ "GEE", 4]
+      target:
+        - [ "GEE", 1 ]

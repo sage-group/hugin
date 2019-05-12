@@ -1,0 +1,76 @@
+model_name: test_terrasigna # This is the name for the model
+data_source: !!python/object/apply:hugin.io.FileSystemLoader
+  kwds:
+    data_pattern: '(?P<name>[0-9A-Za-z_]+)__(?P<idx>[A-Za-z0-9_\.]+)_(?P<type>B.*)\.tif$'
+    id_format: '{name}-{idx}'
+    type_format: '{type}'
+    input_source: /data/syno1/sage-storage/ML4EO/TerraSigna-Sample1/S2A_OPER_MSI_L1C_TL_SGS__20170519T130610_A009957_T34TFQ_N02.05/data
+dataset_cache: /tmp/cache3.yaml
+max_number_images: 3000
+window_size: [ 256, 256 ]
+stride_size: 100
+random_seed: 42
+mapping:
+  inputs:
+      - [ "B02_10m", 1 ]
+      - [ "B02_10m", 1 ]
+      - [ "B02_10m", 1 ]
+      - [ "B02_10m", 1 ]
+  target:
+      - [ "B01_10m_GTI", 1 ]
+model_type: keras
+model:
+  model_builder: hugin.models.unet.unetv14:unet_v14
+  batch_size: 5
+  prefetch_queue_size: 10 # Default 10
+  model_path: "data/terrasigna/{model_name}/{hostname}-{user}.hdf5"
+  loss: categorical_crossentropy
+  load_only_weights: False
+  log: "data/terrasigna/{model_name}/logging-{model_name}-{hostname}.csv"
+  early_stopping:
+    monitor: val_loss
+    patience: 10
+    verbose: 0
+    mode: auto
+  adaptive_lr:
+    monitor: val_loss
+    factor: !!float 0.1
+    patience: 3
+    verbose: 1
+    epsilon: !!float 1e-4
+    mode: min
+  checkpoint:
+    path: "data/terrasigna/_checkpoints/%(model_name)s/%(hostname)s-%(user)s-{epoch:02d}.hdf5"
+    options: # This is optional
+       save_best_only: False
+  train_epochs: 10
+  swap_axes: True
+  optimiser: !!python/object/apply:keras.optimizers.Adam
+    kwds:
+      lr: !!float 0.0001
+      beta_1: !!float 0.9
+      beta_2: !!float 0.999
+      epsilon: !!float 1e-8
+  metrics:
+    - accuracy
+    - !!python/name:hugin.tools.utils.dice_coef
+  jaccard_coef: False
+  format_converter: !!python/object/apply:hugin.io.CategoricalConverter
+    kwds:
+      num_classes: 2
+  augment: False
+  augment_:
+    rotate:
+      prob: 0.3
+      angle: 90
+    shift:
+      prob: 0.5
+    zoom:
+      zoom_rg: 0.4
+      prob: -1
+    laplace:
+      ksize: 1
+      prob: 0.5
+    horizontal_flip: 0.5
+    vertical_flip: 0.5
+
