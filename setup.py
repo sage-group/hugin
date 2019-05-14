@@ -14,7 +14,8 @@ REQUIRED_PACKAGES = [
     'h5py',
     'backoff==1.8.0',
     'matplotlib<3.1',
-    'scikit-learn'
+    'scikit-learn',
+    'imgaug'
 ]
 
 def extra_files(directory):
