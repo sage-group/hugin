@@ -52,6 +52,7 @@ augment:
       mul: !!python/tuple [0.8, 1.2]
       per_channel: !!float 0.2
       prop: !!float 0.0
+  random_order: True
 mapping:
   inputs:
       - [ "B02_10m", 1 ]
