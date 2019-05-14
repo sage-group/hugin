@@ -10,6 +10,48 @@ max_number_images: 3000
 window_size: [ 256, 256 ]
 stride_size: 100
 random_seed: 42
+augment:
+  operators:
+    Fliplr: !!float 0.2
+    Flipud: !!float 0.2
+    Dropout:
+      p: !!python/list [0.05, 0.2]
+      prop: !!float 0.0
+    Sharpen:
+      alpha: !!python/tuple [0.0, 1.0]
+      prop: !!float 0.0
+    Crop:
+      percent: !!python/tuple [0, 0.2]
+      prop: !!float 0.0
+    CropAndPad:
+      percent: !!python/tuple [-0.2, 0.2]
+      pad_mode: "edge"
+      prop: !!float 0.0
+    CoarseDropout:
+      p: !!python/tuple [0.01, 0.1]
+      size_percent: 0.01
+      prop: !!float 0.0
+    Affine:
+      scale:
+        x: !!python/tuple [0.8, 1.2]
+        y: !!python/tuple [0.8, 1.2]
+      rotate: !!python/tuple [-45, 45]
+      translate_percent:
+        x: !!python/tuple [-0.2, 0.2]
+        y: !!python/tuple [-0.2, 0.2]
+      shear: !!python/tuple [-8, 8]
+      prop: !!float 0.0
+    ElasticTransformation:
+      alpha: 50
+      sigma: 5
+      prop: !!float 0.0
+    GaussianBlur:
+      sigma: !!python/tuple [0, 3.0]
+      prop: !!float 0.0
+    Multiply:
+      mul: !!python/tuple [0.8, 1.2]
+      per_channel: !!float 0.2
+      prop: !!float 0.0
 mapping:
   inputs:
       - [ "B02_10m", 1 ]
@@ -58,19 +100,3 @@ model:
   format_converter: !!python/object/apply:hugin.io.CategoricalConverter
     kwds:
       num_classes: 2
-  augment: False
-  augment_:
-    rotate:
-      prob: 0.3
-      angle: 90
-    shift:
-      prob: 0.5
-    zoom:
-      zoom_rg: 0.4
-      prob: -1
-    laplace:
-      ksize: 1
-      prob: 0.5
-    horizontal_flip: 0.5
-    vertical_flip: 0.5
-
