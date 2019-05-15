@@ -73,3 +73,8 @@ hugin predict \
 ```
 
 An example prediction configuration can be found in the [predic_s2_forestry.yaml](etc/usecases/s2-forestry/predic_s2_forestry.yaml) configuration file.
+
+The `predict` command requires at least three arguments: 
+ * `--ensemble-config`: representing the prediction configuration file
+ * `--input-dir`: representing the directory holding data that should server as input for prediction
+ * `--output-dir`: directory for storing the outputs (predictions)
