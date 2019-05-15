@@ -59,7 +59,7 @@ Training can be started as follows:
 hugin train --config training_config.yaml
 ```
 
-An example training configuration can be found in the [train_s2_forestry.yaml](etc/usecases/s2-forestry/train_s2_forestry.yaml) configuration file.
+An example training configuration can be found in [docs/examples/train.yaml](docs/examples/train.yaml).
 
 ### Prediction
 
@@ -72,9 +72,41 @@ hugin predict \
     --output-dir /tmp/output
 ```
 
-An example prediction configuration can be found in the [predic_s2_forestry.yaml](etc/usecases/s2-forestry/predic_s2_forestry.yaml) configuration file.
+An example prediction configuration can be found in [docs/examples/predict.yaml](docs/examples/predict.yaml)
 
 The `predict` command requires at least three arguments: 
  * `--ensemble-config`: representing the prediction configuration file
  * `--input-dir`: representing the directory holding data that should server as input for prediction
  * `--output-dir`: directory for storing the outputs (predictions)
+
+## Developing your own models
+
+Developing your own is really simple. The only thing needed is to create a python
+file that creates the corresponding Keras model.
+
+The code building the model needs to be resolvable by Hugin: it needs to be available in the `PYTHONPATH`.
+
+Let's consider you are preparing a new segmentation related experiment.
+
+The most simple approach would be to create a new directory containing both the source code and model configuration, like in 
+the following example:
+
+```
+mysegmentation/
+├── model.py
+├── predict.yaml
+└── train.yaml
+```
+
+The files involved in this example are:
+* `model.py`: it contains the source code for the model. An example can be found in the source distribution, in [src/hugin/models/unet/unetv14.py](src/hugin/models/unet/unetv14.py)
+* `train.yaml`: the configuration used for training. An example can be found in [docs/examples/train.yaml](docs/examples/train.yaml)
+* `predict.yaml`: the configuration used for prediction. An example can be found in [docs/examples/predict.yaml](docs/examples/predict.yaml)
+
+After creating your model and preparing your experiment configuration you can start training, by running:
+
+```bash
+hugin train --config train.yaml
+```
+
+As specified in the model configuration the model will train for `10` epochs and produce the final model.
