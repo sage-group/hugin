@@ -6,7 +6,7 @@ REQUIRED_PACKAGES = [
     'Keras==2.2.4',
     'geojson',
     'rasterio==1.0.13',
-    'scikit-image',
+    'scikit-image==0.15.0',
     'scipy',
     'geopandas',
     'Shapely',
@@ -15,8 +15,9 @@ REQUIRED_PACKAGES = [
     'backoff==1.8.0',
     'matplotlib<3.1',
     'scikit-learn',
-    'imgaug'
+    'imgaug==0.2.8'
 ]
+
 
 def extra_files(directory):
     datafiles = [(d, [os.path.join(d, f) for f in files])
