@@ -49,7 +49,7 @@ Using Hugin involves two steps:
  - training
  - prediction
 
-Both steps are driven dedicated configuration files.
+Both steps are driven using dedicated configuration files.
 
 ### Training
 
@@ -58,6 +58,8 @@ Training can be started as follows:
 ```bash
 hugin train --config training_config.yaml
 ```
+
+An example training configuration can be found in the [train_s2_forestry.yaml](etc/usecases/s2-forestry/train_s2_forestry.yaml) configuration file.
 
 ### Prediction
 
@@ -69,3 +71,10 @@ hugin predict \
     --input-dir /path/to/input/dir \
     --output-dir /tmp/output
 ```
+
+An example prediction configuration can be found in the [predic_s2_forestry.yaml](etc/usecases/s2-forestry/predic_s2_forestry.yaml) configuration file.
+
+The `predict` command requires at least three arguments: 
+ * `--ensemble-config`: representing the prediction configuration file
+ * `--input-dir`: representing the directory holding data that should server as input for prediction
+ * `--output-dir`: directory for storing the outputs (predictions)
