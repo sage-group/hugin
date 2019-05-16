@@ -1,4 +1,4 @@
-model_name: test_terrasigna # This is the name for the model
+model_name: forestry_training # This is the name for the model
 data_source: !!python/object/apply:hugin.io.FileSystemLoader
   kwds:
     data_pattern: '(?P<name>[0-9A-Za-z_]+)__(?P<idx>[A-Za-z0-9_\.]+)_(?P<type>B.*)\.tif$'
