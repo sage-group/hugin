@@ -17,7 +17,6 @@ models:
     match_id: '.*'
     batch_size: 15
     swap_axes: True
-    rescale: null
     mapping:
       inputs:
         - [ "GEE", 3]
