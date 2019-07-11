@@ -1,5 +1,7 @@
 # Hugin
 
+[![Build Status](https://travis-ci.com/sage-group/hugin.svg?branch=master)](https://travis-ci.com/sage-group/hugin)
+
 Hugin helps scientists run Machine Learning experiments on geospatial raster data.
 
 Overall Hugin aims to facilitate experimentation with multiple machine learning problems, like:
