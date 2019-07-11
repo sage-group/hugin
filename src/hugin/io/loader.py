@@ -15,25 +15,18 @@ __license__ = \
        limitations under the License.
     """
 
-import atexit
 import logging
 import threading
 from collections import OrderedDict
 from queue import Queue
-from urllib.parse import urlparse
+
 
 import backoff
 import math
 import numpy as np
-import os
-import rasterio
-from hashlib import sha224
 from keras.utils import to_categorical
-from rasterio.io import DatasetReader
-from rasterio.windows import Window
-from tempfile import NamedTemporaryFile, mkdtemp
 
-from hugin.tools.IOUtils import IOUtils
+from rasterio.windows import Window
 
 log = logging.getLogger(__name__)
 
@@ -100,113 +93,6 @@ def adapt_shape_and_stride(scene, base_scene, shape, stride):
 
     # We should check if scene and base_scene are the same and avoid the computation
     return computed_shape, computed_stride
-
-
-class DatasetLoader(object):
-    def __init__(self, datasets, loop=False, rasterio_env={}, _cache_data=False, _delete_temporary_cache=True):
-        self._datasets = datasets
-        self.rasterio_env = rasterio_env
-        self._curent_position = 0
-        self.loop = loop
-        self._cache_data = _cache_data
-        if self._cache_data:
-            self._temp_dir = mkdtemp("cache", "hugin")
-
-        def cleanup_dir(temp_dir):
-            IOUtils.delete_recursively(temp_dir)
-
-        if self._cache_data and _delete_temporary_cache:
-            atexit.register(cleanup_dir, self._temp_dir)
-
-    @property
-    def loop(self):
-        return self._loop
-
-    @loop.setter
-    def loop(self, val):
-        self._loop = val
-
-    @property
-    def datasets(self):
-        return self._datasets
-
-    @datasets.setter
-    def datasets(self, val):
-        self._datasets = val
-
-    def __len__(self):
-        return len(self._datasets)
-
-    def __iter__(self):
-        return self
-
-    def reset(self):
-        self._curent_position = 0
-
-    def next(self):
-        return self.__next__(self)
-
-    def __next__(self):
-        length = len(self)
-        if length == 0:
-            raise StopIteration()
-        if self._curent_position == length:
-            if self._loop:
-                self.reset()
-            else:
-                raise StopIteration()
-
-        entry = self._datasets[self._curent_position]
-        env = getattr(self, 'rasterio_env', {})
-        self._curent_position += 1
-        entry_name, entry_components = entry
-        new_components = {}
-        cache_data = self._cache_data
-        use_tensorflow_io = False
-        for component_name, component_path in entry_components.items():
-            if isinstance(component_path, DatasetReader):
-                component_path = component_path.name
-            local_component_path = component_path
-            url_components = urlparse(component_path)
-            if not url_components.scheme:
-                cache_data = False
-                if url_components.path.startswith('/vsigs/'):
-                    cache_data = True  # We should check if we run inside GCP ML Engine
-                    use_tensorflow_io = True
-                    component_path = url_components.path[6:]
-                    component_path = "gs:/" + component_path
-            else:
-                if url_components.scheme == 'file':
-                    local_component_path = url_components.path
-                    use_tensorflow_io = False
-                    cache_data = False
-
-            with rasterio.Env(**env):
-                if use_tensorflow_io:
-                    real_path = component_path
-                    data = IOUtils.open_file(real_path, "rb").read()
-                    if cache_data:
-                        hash = sha224(component_path.encode("utf8")).hexdigest()
-                        hash_part = "/".join(list(hash)[:3])
-                        dataset_path = os.path.join(self._temp_dir, hash_part)
-                        if not IOUtils.file_exists(dataset_path):
-                            IOUtils.recursive_create_dir(dataset_path)
-                        dataset_path = os.path.join(dataset_path, os.path.basename(component_path))
-                        if not IOUtils.file_exists(dataset_path):
-                            f = IOUtils.open_file(dataset_path, "wb")
-                            f.write(data)
-                            f.close()
-                        component_src = rasterio.open(dataset_path)
-                    else:
-                        with NamedTemporaryFile() as tmpfile:
-                            tmpfile.write(data)
-                            tmpfile.flush()
-                            component_src = rasterio.open(tmpfile.name)
-                else:
-                    component_src = rasterio.open(local_component_path)
-                new_components[component_name] = component_src
-        return (entry_name, new_components)
-
 
 class TileGenerator(object):
     def __init__(self, scene, shape=None, mapping=(), stride=None, swap_axes=False, normalize=False):
@@ -358,11 +244,15 @@ class TileGenerator(object):
         while True:
             inputs = {}
             outputs = {}
-            for mapping_name, generator in input_generators.items():
-                inputs[mapping_name] = next(generator)
-            for mapping_name, generator in output_generators.items():
-                outputs[mapping_name] = next(generator)
-            yield (inputs, outputs)
+            try:
+                for mapping_name, generator in input_generators.items():
+                    inputs[mapping_name] = next(generator)
+                for mapping_name, generator in output_generators.items():
+                    outputs[mapping_name] = next(generator)
+                yield (inputs, outputs)
+            except StopIteration:
+                return
+
 
 
 def augment_mapping_with_datasets(dataset, mapping):
@@ -378,7 +268,7 @@ def augment_mapping_with_datasets(dataset, mapping):
             new_entry = OrderedDict({
                 "type": entry[0],
                 "channel": entry[1],
-                "normalize": 1.0,
+                "normalize": 1,
                 "preprocessing": []
             })
             if len(entry) > 2:
@@ -425,25 +315,18 @@ class DataGenerator(object):
                  swap_axes=False,
                  postprocessing_callbacks=[],
                  optimise_huge_datasets=True,
-                 default_window_size=None,
-                 default_stride_size=None):
+                 default_window_size=None):
 
-        if default_window_size is not None:
-            self.primary_window_shape = default_window_size
-
-        if default_stride_size is not None:
-            self.primary_stride = default_stride_size
-        else:
-            self.primary_stride = self.primary_window_shape[0]
 
         if type(input_mapping) is list or type(input_mapping) is tuple:
             input_mapping = self._convert_input_mapping(input_mapping)
         if type(output_mapping) is list or type(output_mapping) is tuple:
             output_mapping = self._convert_output_mapping(output_mapping)
 
-        self._datasets = datasets
-
         primary_mapping = [input_mapping[m] for m in input_mapping if input_mapping[m].get('primary', False)]
+
+
+
         if len(primary_mapping) > 1:
             raise TypeError("More then one primary mappings")
         elif not primary_mapping:
@@ -451,14 +334,37 @@ class DataGenerator(object):
         primary_mapping = primary_mapping[0]
         self._primary_mapping = primary_mapping
 
-        self.primary_window_shape = primary_mapping['window_shape']
-        self.primary_stride = primary_mapping['stride']
-        datasets = self._datasets.datasets
+        self._datasets = datasets
+
         primary_mapping_type_id = self._primary_mapping['channels'][0][0]
-        if datasets:
-            self.primary_scene = datasets[0][1][primary_mapping_type_id]
+        first = next(self._datasets)
+        self._datasets.reset()
+        if self._datasets.datasets:
+            if primary_mapping_type_id not in first[1]:
+                raise KeyError("Unknown type id: %s", primary_mapping_type_id)
+            self.primary_scene = first[1][primary_mapping_type_id]
         else:  # No scenes available
             self.primary_scene = None
+
+        if default_window_size is not None:
+            window_size = default_window_size
+        elif self.primary_scene is not None:
+            window_size = (self.primary_scene.width, self.primary_scene.height)
+            log.warning("Missing default window_size using computed one: %s", window_size)
+        else:
+            window_size = None
+        self.primary_window_shape = primary_mapping.get('window_shape', window_size)
+        if self.primary_window_shape is None:
+            raise AttributeError("No way for computing window shape")
+
+        if 'window_shape' not in primary_mapping:
+            primary_mapping['window_shape'] = self.primary_window_shape
+
+        self.primary_stride = primary_mapping.get('stride', self.primary_window_shape[0])
+
+        if 'stride' not in primary_mapping:
+            primary_mapping['stride'] = self.primary_stride
+
         log.info("Primary sliding window: %s stride: %s", self.primary_window_shape, self.primary_stride)
         self._mapping = (input_mapping, output_mapping)
         self._swap_axes = swap_axes
@@ -503,8 +409,8 @@ class DataGenerator(object):
         self._num_tiles = 0
         dataset_loader = self._datasets
 
-        input_stride = self._primary_mapping['stride']
-        input_window_shape = self._primary_mapping['window_shape']
+        input_stride = self.primary_stride
+        input_window_shape = self.primary_window_shape
         input_channels = self._primary_mapping['channels']
         for scene_id, scene_data in dataset_loader:
             tile_generator = TileGenerator(scene_data,

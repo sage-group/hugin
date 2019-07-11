@@ -15,5 +15,5 @@ __license__ = \
        limitations under the License.
     """
 
-from .dataset_loaders import FileSystemLoader, FileLoader
-from .loader import DatasetLoader, TileGenerator, DataGenerator, ThreadedDataGenerator, CategoricalConverter
+from .loader import TileGenerator, DataGenerator, ThreadedDataGenerator, CategoricalConverter
+from .dataset_loaders import FileLoader, FileSystemLoader, DatasetGenerator

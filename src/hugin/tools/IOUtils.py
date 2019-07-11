@@ -15,9 +15,12 @@ __license__ = \
        limitations under the License.
     """
 
+import sys
 import logging
 from contextlib import contextmanager
+
 from urllib.parse import urlparse
+
 
 import os
 import shutil
@@ -37,8 +40,8 @@ class IOUtilsType(type):
 
         return __wrapper
 
-
-class IOUtils(metaclass=IOUtilsType): pass
+class IOUtils(metaclass=IOUtilsType):
+    pass
 
 
 class LocalIOUtils(object):

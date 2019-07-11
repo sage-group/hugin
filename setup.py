@@ -1,23 +1,24 @@
 from setuptools import find_packages
 from setuptools import setup
 import os
+import sys
+
 
 REQUIRED_PACKAGES = [
-    'Keras==2.2.4',
+    'Keras',
     'geojson',
-    'rasterio==1.0.13',
-    'scikit-image==0.15.0',
+    'rasterio',
+    'scikit-image',
     'scipy',
     'geopandas',
     'Shapely',
     'Fiona',
     'h5py',
-    'backoff==1.8.0',
+    'backoff',
     'matplotlib<3.1',
     'scikit-learn',
-    'imgaug==0.2.8'
+    'imgaug'
 ]
-
 
 def extra_files(directory):
     datafiles = [(d, [os.path.join(d, f) for f in files])
