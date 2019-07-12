@@ -394,10 +394,13 @@ class DataGenerator(object):
         mapping_name = endpoint + "_1"
         new_mapping[mapping_name] = {
             'primary': primary,
-            'window_shape': self.primary_window_shape,
-            'stride': self.primary_stride,
             'channels': mapping
         }
+        if hasattr(self, 'primary_window_shape') and self.primary_window_shape is not None:
+            new_mapping[mapping_name]['window_shape'] = self.primary_window_shape
+        if hasattr(self, 'primary_stride') and self.primary_stride is not None:
+            new_mapping[mapping_name]['stride'] = self.primary_stride
+
         return new_mapping
 
     def _convert_input_mapping(self, mapping, primary=True):
