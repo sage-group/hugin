@@ -34,7 +34,7 @@ except ImportError:
 
 import numpy as np
 
-from ..io import DataGenerator, ThreadedDataGenerator, CategoricalConverter, DatasetLoader
+from ..io import DataGenerator, ThreadedDataGenerator, CategoricalConverter
 
 log = getLogger(__name__)
 
@@ -402,17 +402,9 @@ def train_handler(config, args):
 
         with IOUtils.open_file(dataset_cache, "w") as f:
             f.write(yaml.dump(dump, Dumper=Dumper))
-
-
     else:
         log.info("Loading training datasets from %s", dataset_cache)
         train_datasets, validation_datasets = yaml.load(IOUtils.open_file(dataset_cache), Loader=Loader)
-        if isinstance(train_datasets, DatasetLoader):
-            log.warning("Converting from legacy format: `train_datasets`")
-            train_datasets = train_datasets._datasets
-        if isinstance(validation_datasets, DatasetLoader):
-            log.warning("Converting from legacy format: `validation_datasets`")
-            validation_datasets = validation_datasets._datasets
         train_datasets, validation_datasets = data_source.build_dataset_loaders(train_datasets, validation_datasets)
 
     train_datasets.loop = True
