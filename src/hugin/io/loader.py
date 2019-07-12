@@ -315,7 +315,8 @@ class DataGenerator(object):
                  swap_axes=False,
                  postprocessing_callbacks=[],
                  optimise_huge_datasets=True,
-                 default_window_size=None):
+                 default_window_size=None,
+                 default_stride_size=None):
 
 
         if type(input_mapping) is list or type(input_mapping) is tuple:
@@ -360,7 +361,13 @@ class DataGenerator(object):
         if 'window_shape' not in primary_mapping:
             primary_mapping['window_shape'] = self.primary_window_shape
 
-        self.primary_stride = primary_mapping.get('stride', self.primary_window_shape[0])
+        if 'stride' not in primary_mapping:
+            if default_stride_size is not None:
+                self.primary_stride = default_stride_size
+            else:
+                self.primary_stride = self.primary_window_shape[0]
+        else:
+            self.primary_stride = primary_mapping['stride']
 
         if 'stride' not in primary_mapping:
             primary_mapping['stride'] = self.primary_stride
