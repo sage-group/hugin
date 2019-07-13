@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 __license__ = \
     """Copyright 2019 West University of Timisoara
     
@@ -14,22 +15,24 @@ __license__ = \
        See the License for the specific language governing permissions and
        limitations under the License.
     """
-
-import argparse
-from logging import getLogger
 from logging.config import dictConfig
-
 from pkg_resources import resource_stream
-
-try:
-    from yaml import CSafeLoader as Loader
-except ImportError:
-    from yaml import SafeLoader as Loader
 
 import yaml
 
+try:
+    from yaml import CLoader as Loader
+except ImportError:
+    from yaml import Loader as Loader
+
 internal_logging_config = yaml.load(resource_stream(__name__, "/../_data/logging-config.yaml"), Loader=Loader)
 dictConfig(internal_logging_config)
+
+import argparse
+from logging import getLogger
+
+from hugin.tools.predictv3 import predict_handlerv3
+from hugin.tools.trainv2 import train_handler as train_handlerv2
 
 
 def predict_handler(*args, **kw):
@@ -50,6 +53,12 @@ def main():
     parser.add_argument('--config', type=argparse.FileType('r'), required=False, default=None,
                         help='Path to config file')
     subparsers = parser.add_subparsers(help='Available commands')
+
+    parser_trainv2 = subparsers.add_parser('trainv2', help="Train a model")
+    parser_trainv2.add_argument('--config', required=True, type=argparse.FileType('r'), help="Path to configuration file")
+    parser_trainv2.add_argument('--input-dir', required=False, default=None)
+    parser_trainv2.set_defaults(func=train_handlerv2)
+
     parser_train = subparsers.add_parser('train', help='Train a model')
     parser_train.add_argument('--switch-to-prefix', action='store_true', default=False,
                               help="Chdir to python sysprefix")
@@ -78,10 +87,22 @@ def main():
     parser_predictv2.add_argument('--scoring-gti', default=None, type=str, help="Component to use for scoring")
     parser_predictv2.set_defaults(func=predict_handler)
 
+    parser_predictv3 = subparsers.add_parser('predictv3', help='Run prediction')
+    parser_predictv3.add_argument('--ensemble-config', required=True,
+                                  type=argparse.FileType('r'),
+                                  help='Path to the ensable configuration')
+    parser_predictv3.add_argument('--input-dir', required=True)
+    parser_predictv3.add_argument('--data-source', required=False, default='directory',
+                                  help='Data source for input data. Defaults to directory')
+    parser_predictv3.add_argument('--output-dir', required=False, default=None)
+    parser_predictv3.add_argument('--output-text', default=None, type=argparse.FileType('w'))
+    parser_predictv3.add_argument('--scoring-gti', default=None, type=str, help="Component to use for scoring")
+    parser_predictv3.set_defaults(func=predict_handlerv3)
+
     args = parser.parse_args()
 
     if args.config is not None:
-        config = yaml.load(args.config)
+        config = yaml.load(args.config, Loader=Loader)
     else:
         config = {}
 

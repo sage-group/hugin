@@ -1,116 +1,16 @@
 import os
-
 import glob
-
-import random
 import pytest
-import numpy as np
-from PIL import Image,ImageDraw
+
 from rasterio.io import DatasetReader
-
 from hugin.io import FileLoader, FileSystemLoader, DataGenerator
-import rasterio
-from rasterio.transform import from_origin
+from tempfile import NamedTemporaryFile
 
-from tempfile import TemporaryDirectory, NamedTemporaryFile
-
+from tests import runningInCI
 
 basedir = os.path.join(os.path.dirname(__file__), "data", "scanner_examples")
 
-@pytest.fixture
-def generated_filesystem_loader():
-    width = 2131
-    height = 1979
-    size = 35
-    tempdir = TemporaryDirectory("-hugin")
-    random.seed(42)
-
-    match_color = "red"
-
-    NUM_IMAGES = 10
-
-    for imgidx in range(0, NUM_IMAGES):
-        data = np.zeros((height, width, 3), dtype=np.uint8)
-        data_mask = np.zeros((height, width), dtype=np.uint8)
-        im = Image.fromarray(data)
-        mask = Image.fromarray(data_mask, mode="L")
-
-        draw = ImageDraw.Draw(im)
-        mdraw = ImageDraw.Draw(mask)
-        colors = ["red", "blue", "green", "white"]
-        num_rect = 5
-        num_circle = 4
-
-        for i in range(0, num_rect):
-            startx = random.randint(0, width-50)
-            starty = random.randint(0, height-50)
-            endx = random.randint(startx+10, startx+random.randint(startx+10, startx+size))
-            endy = random.randint(starty+10, starty+random.randint(starty+10, starty+size))
-            color = random.choice(colors)
-            draw.rectangle([(startx, starty), (endx, endy)], fill=color)
-            if match_color == color:
-                mdraw.rectangle([(startx, starty), (endx, endy)], fill=color)
-
-        for i in range(0, num_circle):
-            startx = random.randint(0, width-50)
-            starty = random.randint(0, height-50)
-            endx = random.randint(startx+20, startx+random.randint(startx+10, startx+size))
-            endy = random.randint(starty+20, starty+random.randint(starty+10, starty+size))
-            color = random.choice(colors[:-1])
-            draw.ellipse([(startx, starty), (endx, endy)], fill=color)
-            if match_color == color:
-                mdraw.ellipse([(startx, starty), (endx, endy)], fill=color)
-
-        fname = os.path.join(tempdir.name, "TEST_RGB_{}.tiff".format(imgidx+1))
-        mname = os.path.join(tempdir.name, "TEST_RGB_{}.tiff".format(imgidx+1))
-
-        res = 0.5
-        transform = from_origin(21.2086, 45.7488, res, res)
-        rgb_image = rasterio.open(
-            fname,
-            'w',
-            height=data.shape[0],
-            width=data.shape[1],
-            count=3,
-            driver='GTiff',
-            dtype=data.dtype,
-            transform=transform,
-            compress='lzw',
-            crs={'init': 'epsg:3857'},
-        )
-        gti_image = rasterio.open(
-            mname,
-            'w',
-            height=data_mask.shape[0],
-            width=data_mask.shape[1],
-            count=1,
-            driver='GTiff',
-            dtype=data_mask.dtype,
-            transform=transform,
-            compress='lzw',
-            crs={'init': 'epsg:3857'},
-        )
-        for i in range(0, data.shape[-1]):
-            rgb_image.write(data[:,:,i], i+1)
-        gti_image.write(data_mask, 1)
-        gti_image.close()
-        rgb_image.close()
-
-    base_kwargs = {
-        'data_pattern': r"(?P<name>[0-9A-Za-z]+)_(?P<SECOND>[A-Za-z0-9]+)_(?P<THIRD>[A-Za-z0-9]+)\.tiff$",
-        'type_format': "{SECOND}",
-        'id_format': "{name}-{THIRD}",
-        'input_source': tempdir.name,
-        'validation_percent': 0.4
-    }
-
-    loader = FileSystemLoader(**base_kwargs)
-    loader.__temp_input_directory = tempdir
-
-    return loader
-
 class TestLoaders(object):
-
     def setup(self):
         self.pattern = basedir + os.sep + "*.txt"
         self.files = glob.glob(self.pattern)
@@ -183,7 +83,7 @@ class TestLoaders(object):
         kwargs8 = self.base_kwargs.copy()
         kwargs8['validation_percent'] = 0.4
         fs8 = FileLoader(**kwargs8)
-        training_loader, validation_loader = fs8.get_dataset_loader()
+        training_loader, validation_loader = fs8.get_dataset_loaders()
 
         assert len(training_loader) == 2
         assert len(validation_loader) == 1
@@ -204,9 +104,9 @@ class TestFileSystemLoader(object):
 
 class TestDatasetGenerator(object):
     def test_loader_loops(self, generated_filesystem_loader):
-        training_loader, validation_loader = generated_filesystem_loader.get_dataset_loader()
-        assert len(training_loader) == 6
-        assert len(validation_loader) == 4
+        training_loader, validation_loader = generated_filesystem_loader.get_dataset_loaders()
+        assert len(training_loader) == 8
+        assert len(validation_loader) == 2
 
         def _loop_data():
             for i in range(0, len(training_loader) + 10):
@@ -230,9 +130,8 @@ class TestDatasetGenerator(object):
 
         _loop_data()
 
-
     def test_loader_datasets(self, generated_filesystem_loader):
-        training_loader, validation_loader = generated_filesystem_loader.get_dataset_loader()
+        training_loader, validation_loader = generated_filesystem_loader.get_dataset_loaders()
 
         dataset_name, dataset_parts = next(training_loader)
         assert isinstance(dataset_name, str)
@@ -244,10 +143,10 @@ class TestDatasetGenerator(object):
         assert rgb_dset.count == 3
 
 
-class TestTileGenerator(object):
-
+class TestDataGenerator(object):
+    @pytest.mark.skipif(not runningInCI(), reason="Skipping running locally as it might be too slow")
     def test_number_of_tiles(self, generated_filesystem_loader):
-        training_loader, validation_loader = generated_filesystem_loader.get_dataset_loader()
+        training_loader, validation_loader = generated_filesystem_loader.get_dataset_loaders()
         training_loader.loop = True
         validation_loader.loop = True
 
@@ -257,8 +156,8 @@ class TestTileGenerator(object):
                                    input_mapping={
                                        'input_1': {
                                            'primary': True,
-                                           'window_shape': (256, 256),
-                                           'stride': 256,
+                                           'window_shape': (512, 512),
+                                           'stride': 512,
                                            'channels': [
                                                [ "RGB", 1 ],
                                                [ "RGB", 2 ],
@@ -272,8 +171,8 @@ class TestTileGenerator(object):
                                    input_mapping={
                                        'input_1': {
                                            'primary': True,
-                                           'window_shape': (256, 256),
-                                           'stride': 256,
+                                           'window_shape': (512, 512),
+                                           'stride': 512,
                                            'channels': [
                                                ["RGB", 1],
                                                ["RGB", 2],
@@ -289,5 +188,55 @@ class TestTileGenerator(object):
                                        }
                                    })
 
-        assert len(train_data) == 432
-        assert len(validation_data) == 288
+        assert len(train_data) == 160
+        assert len(validation_data) == 40
+        for i in range(len(train_data)):
+            tile =  next(train_data)
+
+
+    @pytest.mark.skipif(not runningInCI(), reason="Skipping running locally as it might be too slow")
+    def test_number_of_tiles_clasic(self, generated_filesystem_loader):
+        training_loader, validation_loader = generated_filesystem_loader.get_dataset_loaders()
+        training_loader.loop = True
+        validation_loader.loop = True
+
+
+        train_data = DataGenerator(training_loader,
+                                   batch_size=None,
+                                   default_window_size=(256, 256),
+                                   input_mapping=[
+                                       ("RGB", 1),
+                                       ("RGB", 2),
+                                       ("RGB", 3)
+                                   ],
+                                   output_mapping={})
+
+
+        assert len(train_data) == 576
+        for i in range(len(train_data)):
+            tile = next(train_data)
+
+
+    # def test_image_reassembly(self, generated_filesystem_loader):
+    #     training_loader, validation_loader = generated_filesystem_loader.get_dataset_loaders()
+    #     training_loader.loop = True
+    #     validation_loader.loop = True
+    #     training_loader._datasets = training_loader._datasets[:1]
+    #
+    #     train_data = DataGenerator(training_loader,
+    #                                batch_size=None,
+    #                                default_window_size=(256, 256),
+    #                                input_mapping=[
+    #                                    ("RGB", 1),
+    #                                    ("RGB", 2),
+    #                                    ("RGB", 3)
+    #                                ],
+    #                                output_mapping={})
+    #
+    #     img_path = training_loader._datasets[0][1]['RGB']
+    #     import rasterio
+    #     dset = rasterio.open(img_path)
+    #     img = dset.read()
+    #     assert len(train_data) == 72
+
+
