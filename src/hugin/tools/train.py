@@ -142,6 +142,7 @@ def train_keras(model_name,
 
     if batch_size is None:
         batch_size = model_config.get("batch_size", None)
+    coregistration = model_config.get("coregistration", True)
     model_path = model_config["model_path"]
     model_loss = model_config.get("loss", "categorical_crossentropy")
     log.info("Using loss: %s", model_loss)
@@ -160,7 +161,8 @@ def train_keras(model_name,
                                swap_axes=swap_axes,
                                postprocessing_callbacks=pre_callbacks,
                                default_window_size=window_size,
-                               default_stride_size=stride_size)
+                               default_stride_size=stride_size,
+                               coregistration=coregistration)
 
     train_data = ThreadedDataGenerator(train_data, queue_size=prefetch_queue_size)
 

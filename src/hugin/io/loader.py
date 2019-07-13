@@ -95,7 +95,7 @@ def adapt_shape_and_stride(scene, base_scene, shape, stride):
     return computed_shape, computed_stride
 
 class TileGenerator(object):
-    def __init__(self, scene, shape=None, mapping=(), stride=None, swap_axes=False, normalize=False):
+    def __init__(self, scene, shape=None, mapping=(), stride=None, swap_axes=False, normalize=False, coregistration=True):
         """
         @shape: specify the shape of the window/tile. None means the window covers the whole image
         @stride: the stride used for moving the windows
@@ -107,6 +107,7 @@ class TileGenerator(object):
         self._stride = stride
         self.swap_axes = swap_axes
         self._normalize = normalize
+        self.coregistration = coregistration
         self._count = 0
         if self._stride is None and self._shape is not None:
             self._stride = self._shape[0]
@@ -229,15 +230,21 @@ class TileGenerator(object):
 
         for mapping_name, mapping in input_mapping.items():
             base_channel = mapping['channels'][0][0]
-            target_shape, target_stride = adapt_shape_and_stride(self._scene[base_channel], primary_base_scene,
-                                                                 primary_shape, primary_stride)
+            if self.coregistration:
+                target_shape, target_stride = adapt_shape_and_stride(self._scene[base_channel], primary_base_scene,
+                                                                     primary_shape, primary_stride)
+            else:
+                target_shape, target_stride = primary_shape, primary_stride
             input_generators[mapping_name] = self._generate_tiles_for_mapping(self._scene, mapping, target_shape,
                                                                               target_stride)
 
         for mapping_name, mapping in output_mapping.items():
             base_channel = mapping['channels'][0][0]
-            target_shape, target_stride = adapt_shape_and_stride(self._scene[base_channel], primary_base_scene,
-                                                                 primary_shape, primary_stride)
+            if self.coregistration:
+                target_shape, target_stride = adapt_shape_and_stride(self._scene[base_channel], primary_base_scene,
+                                                                     primary_shape, primary_stride)
+            else:
+                target_shape, target_stride = primary_shape, primary_stride
             output_generators[mapping_name] = self._generate_tiles_for_mapping(self._scene, mapping, target_shape,
                                                                                target_stride)
 
@@ -315,8 +322,11 @@ class DataGenerator(object):
                  swap_axes=False,
                  postprocessing_callbacks=[],
                  optimise_huge_datasets=True,
-                 default_window_size=None):
+                 default_window_size=None,
+                 coregistration=True):
 
+
+        self.coregistration = coregistration
 
         if type(input_mapping) is list or type(input_mapping) is tuple:
             input_mapping = self._convert_input_mapping(input_mapping)
@@ -417,7 +427,8 @@ class DataGenerator(object):
                                            input_window_shape,
                                            stride=input_stride,
                                            mapping=input_channels,
-                                           swap_axes=self._swap_axes)
+                                           swap_axes=self._swap_axes,
+                                           coregistration=self.coregistration)
             self._num_tiles += len(tile_generator)
             if self._optimise_huge_datasets:
                 self._num_tiles = self._num_tiles * len(dataset_loader)
