@@ -323,8 +323,6 @@ class DataGenerator(object):
                  postprocessing_callbacks=[],
                  optimise_huge_datasets=True,
                  default_window_size=None,
-                 coregistration=True):
-
 
         self.coregistration = coregistration
 
@@ -370,7 +368,13 @@ class DataGenerator(object):
         if 'window_shape' not in primary_mapping:
             primary_mapping['window_shape'] = self.primary_window_shape
 
-        self.primary_stride = primary_mapping.get('stride', self.primary_window_shape[0])
+        if 'stride' not in primary_mapping:
+            if default_stride_size is not None:
+                self.primary_stride = default_stride_size
+            else:
+                self.primary_stride = self.primary_window_shape[0]
+        else:
+            self.primary_stride = primary_mapping['stride']
 
         if 'stride' not in primary_mapping:
             primary_mapping['stride'] = self.primary_stride
@@ -397,10 +401,13 @@ class DataGenerator(object):
         mapping_name = endpoint + "_1"
         new_mapping[mapping_name] = {
             'primary': primary,
-            'window_shape': self.primary_window_shape,
-            'stride': self.primary_stride,
             'channels': mapping
         }
+        if hasattr(self, 'primary_window_shape') and self.primary_window_shape is not None:
+            new_mapping[mapping_name]['window_shape'] = self.primary_window_shape
+        if hasattr(self, 'primary_stride') and self.primary_stride is not None:
+            new_mapping[mapping_name]['stride'] = self.primary_stride
+
         return new_mapping
 
     def _convert_input_mapping(self, mapping, primary=True):

@@ -246,7 +246,7 @@ class TestDatasetGenerator(object):
 
 class TestTileGenerator(object):
 
-    def test_tile1(self, generated_filesystem_loader):
+    def test_number_of_tiles(self, generated_filesystem_loader):
         training_loader, validation_loader = generated_filesystem_loader.get_dataset_loader()
         training_loader.loop = True
         validation_loader.loop = True
@@ -257,6 +257,7 @@ class TestTileGenerator(object):
                                    input_mapping={
                                        'input_1': {
                                            'primary': True,
+                                           'window_shape': (256, 256),
                                            'stride': 256,
                                            'channels': [
                                                [ "RGB", 1 ],
@@ -266,11 +267,27 @@ class TestTileGenerator(object):
                                        }
                                    },
                                    output_mapping={})
+        validation_data = DataGenerator(validation_loader,
+                                   batch_size=None,
+                                   input_mapping={
+                                       'input_1': {
+                                           'primary': True,
+                                           'window_shape': (256, 256),
+                                           'stride': 256,
+                                           'channels': [
+                                               ["RGB", 1],
+                                               ["RGB", 2],
+                                               ["RGB", 3],
+                                           ],
+                                       }
+                                   },
+                                   output_mapping={
+                                       'output_1': {
+                                           'channels': [
+                                               ["RGB"]
+                                           ]
+                                       }
+                                   })
 
-        first_data = next(train_data)
-
-
-
-
-
-
+        assert len(train_data) == 432
+        assert len(validation_data) == 288
