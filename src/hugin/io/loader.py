@@ -323,6 +323,7 @@ class DataGenerator(object):
                  postprocessing_callbacks=[],
                  optimise_huge_datasets=True,
                  default_window_size=None,
+                 coregistration=False):
 
         self.coregistration = coregistration
 
