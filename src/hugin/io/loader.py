@@ -85,17 +85,18 @@ class ColorMapperConverter(object):
         pass
 
 
-def adapt_shape_and_stride(scene, base_scene, shape, stride):
-    x_geo_orig, y_geo_orig = base_scene.xy(shape[0], shape[1], offset='ul')
+def adapt_shape_and_stride(scene, base_scene, shape, stride, offset='ul'):
+    if scene == base_scene:
+        return shape, stride
+    x_geo_orig, y_geo_orig = base_scene.xy(shape[0], shape[1], offset=offset)
 
     computed_shape = scene.index(x_geo_orig, y_geo_orig)
-    computed_stride, _ = scene.index(*base_scene.xy(stride, stride, offset='ul'))
+    computed_stride, _ = scene.index(*base_scene.xy(stride, stride, offset=offset))
 
-    # We should check if scene and base_scene are the same and avoid the computation
     return computed_shape, computed_stride
 
 class TileGenerator(object):
-    def __init__(self, scene, shape=None, mapping=(), stride=None, swap_axes=False, normalize=False, coregistration=True):
+    def __init__(self, scene, shape=None, mapping=(), stride=None, swap_axes=False, normalize=False, copy=False):
         """
         @shape: specify the shape of the window/tile. None means the window covers the whole image
         @stride: the stride used for moving the windows
@@ -107,8 +108,8 @@ class TileGenerator(object):
         self._stride = stride
         self.swap_axes = swap_axes
         self._normalize = normalize
-        self.coregistration = coregistration
         self._count = 0
+        self._copy = copy
         if self._stride is None and self._shape is not None:
             self._stride = self._shape[0]
 
@@ -158,7 +159,9 @@ class TileGenerator(object):
 
         window_width, window_height = target_shape
 
+        mapping_level_preprocessing = mapping.get('preprocessing', [])
         augmented_mapping = augment_mapping_with_datasets(dataset, mapping)
+
 
         image_height, image_width = augmented_mapping[0]["backing_store"].shape
 
@@ -177,11 +180,13 @@ class TileGenerator(object):
         ytile = 0
 
         data = []
+        buffer = None
         while ytile < ytiles:
             y_start = ytile * stride
             y_end = y_start + window_height
             if y_end > image_height:
                 y_start = image_height - window_height
+                y_end = y_start + window_height
 
             ytile += 1
             xtile = 0
@@ -190,11 +195,14 @@ class TileGenerator(object):
                 x_end = x_start + window_width
                 if x_end > image_width:
                     x_start = image_width - window_width
+                    x_end = x_start + window_width
 
                 xtile += 1
 
                 window = Window(x_start, y_start, window_width, window_height)
+                count = 0
                 for map_entry in augmented_mapping:
+                    count += 1
                     backing_store = map_entry["backing_store"]
                     channel = map_entry["channel"]
                     normalization_value = map_entry.get("normalize", None)
@@ -202,18 +210,26 @@ class TileGenerator(object):
                     preprocessing_callbacks = map_entry.get("preprocessing", [])
 
                     band = self.read_window(backing_store, channel, window)
-                    if normalization_value is not None:
+                    if normalization_value is not None and normalization_value != 1:
                         band = band / normalization_value
                     if transform_expression is not None:
                         raise NotImplementedError("Snuggs expressions are currently not implemented")
-                    for callback in preprocessing_callbacks:
+
+                    all_callbacks = mapping_level_preprocessing + preprocessing_callbacks
+                    for callback in all_callbacks:
                         band = callback(band)
-                    data.append(band)
-                img_data = np.array(data)
+
+                    if buffer is None:
+                        buffer = np.zeros((len(augmented_mapping),) + band.shape, dtype=band.dtype)
+                    if buffer.dtype != band.dtype:
+                        buffer = buffer.astype(np.find_common_type([buffer.dtype, band.dtype], []))
+                    buffer[count - 1] = band
+
+                img_data = buffer if not self._copy else buffer.copy()
+                count = 0
 
                 if self.swap_axes:
                     img_data = np.swapaxes(np.swapaxes(img_data, 0, 1), 1, 2)
-                data.clear()
                 yield img_data
 
     def generate_tiles_for_dataset(self):
@@ -230,21 +246,13 @@ class TileGenerator(object):
 
         for mapping_name, mapping in input_mapping.items():
             base_channel = mapping['channels'][0][0]
-            if self.coregistration:
-                target_shape, target_stride = adapt_shape_and_stride(self._scene[base_channel], primary_base_scene,
-                                                                     primary_shape, primary_stride)
-            else:
-                target_shape, target_stride = primary_shape, primary_stride
+            target_shape, target_stride = mapping["window_shape"], mapping["stride"]
             input_generators[mapping_name] = self._generate_tiles_for_mapping(self._scene, mapping, target_shape,
                                                                               target_stride)
 
         for mapping_name, mapping in output_mapping.items():
             base_channel = mapping['channels'][0][0]
-            if self.coregistration:
-                target_shape, target_stride = adapt_shape_and_stride(self._scene[base_channel], primary_base_scene,
-                                                                     primary_shape, primary_stride)
-            else:
-                target_shape, target_stride = primary_shape, primary_stride
+            target_shape, target_stride = mapping["window_shape"], mapping["stride"]
             output_generators[mapping_name] = self._generate_tiles_for_mapping(self._scene, mapping, target_shape,
                                                                                target_stride)
 
@@ -323,9 +331,11 @@ class DataGenerator(object):
                  postprocessing_callbacks=[],
                  optimise_huge_datasets=True,
                  default_window_size=None,
-                 coregistration=False):
+                 default_stride_size=None,
+                 copy=False):
 
-        self.coregistration = coregistration
+
+        self._copy = copy
 
         if type(input_mapping) is list or type(input_mapping) is tuple:
             input_mapping = self._convert_input_mapping(input_mapping)
@@ -347,11 +357,13 @@ class DataGenerator(object):
 
         primary_mapping_type_id = self._primary_mapping['channels'][0][0]
         first = next(self._datasets)
+        scene_id, scene_data = first
+
         self._datasets.reset()
         if self._datasets.datasets:
-            if primary_mapping_type_id not in first[1]:
+            if primary_mapping_type_id not in scene_data:
                 raise KeyError("Unknown type id: %s", primary_mapping_type_id)
-            self.primary_scene = first[1][primary_mapping_type_id]
+            self.primary_scene = scene_data[primary_mapping_type_id]
         else:  # No scenes available
             self.primary_scene = None
 
@@ -380,8 +392,21 @@ class DataGenerator(object):
         if 'stride' not in primary_mapping:
             primary_mapping['stride'] = self.primary_stride
 
-        log.info("Primary sliding window: %s stride: %s", self.primary_window_shape, self.primary_stride)
         self._mapping = (input_mapping, output_mapping)
+
+        for entry in self._mapping:
+            if entry is None: # Probablyy missing GTI
+                continue
+            for mapping_type, mapping_value in entry.items():
+                if 'window_shape' not in mapping_value or 'stride' not in mapping_value:
+                    scene_type = mapping_value['channels'][0][0]
+                    coregistration = mapping_value.get('coregistration', {})
+                    offset_type = coregistration.get('offset', "ul")
+                    current_scene = scene_data[scene_type]
+                    entry_shape, entry_stride = adapt_shape_and_stride(current_scene, self.primary_scene, self.primary_window_shape, self.primary_stride, offset=offset_type)
+                    mapping_value['window_shape'] = entry_shape
+                    mapping_value['stride'] = entry_stride
+
         self._swap_axes = swap_axes
         self._postprocessing_callbacks = postprocessing_callbacks
         self._num_tiles = None
@@ -396,6 +421,20 @@ class DataGenerator(object):
             self.__output_generator_object = self._looping_output_generator()
         else:
             self.__output_generator_object = self._output_generator()
+
+    @property
+    def mapping_sizes(self):
+        input_sizes = {}
+        output_sizes = {}
+        input_mapping, output_mapping = self._mapping
+        for input_name, input_value in input_mapping.items():
+            input_sizes[input_name] = tuple(input_value["window_shape"]) + (len(input_value["channels"]), )
+        if output_mapping is not None:
+            for output_name, output_value in output_mapping.items():
+                output_sizes[output_name] = tuple(output_value["window_shape"]) + (len(output_value["channels"]), )
+
+        return (input_sizes, output_sizes)
+
 
     def _convert_mapping(self, endpoint, mapping, primary):
         new_mapping = {}
@@ -435,8 +474,7 @@ class DataGenerator(object):
                                            input_window_shape,
                                            stride=input_stride,
                                            mapping=input_channels,
-                                           swap_axes=self._swap_axes,
-                                           coregistration=self.coregistration)
+                                           swap_axes=self._swap_axes)
             self._num_tiles += len(tile_generator)
             if self._optimise_huge_datasets:
                 self._num_tiles = self._num_tiles * len(dataset_loader)
@@ -458,7 +496,9 @@ class DataGenerator(object):
     def _flaten_simple_input(self, inp):
         if len(inp.keys()) != 1:
             return inp
-        return list(inp.values())[0]
+        main_key = list(inp.keys())[0]
+        main_value = inp[main_key]
+        return main_value
 
     def _output_generator(self):
         dataset_loader = self._datasets
@@ -469,6 +509,7 @@ class DataGenerator(object):
 
         scene_count = 0
         callbacks = self._postprocessing_callbacks
+
         for scene in dataset_loader:
             scene_count += 1
             scene_id, scene_data = scene
@@ -480,6 +521,7 @@ class DataGenerator(object):
 
             for entry in tile_generator:
                 count += 1
+
                 input_patches, output_patches = entry
 
                 for callback in callbacks:
@@ -487,37 +529,38 @@ class DataGenerator(object):
 
                 for in_patch_name, in_patch_value in input_patches.items():
                     if in_patch_name not in input_data:
-                        input_data[in_patch_name] = []
-                    input_data[in_patch_name].append(in_patch_value)
+                        input_data[in_patch_name] = np.zeros((self._batch_size,) + in_patch_value.shape, dtype=in_patch_value.dtype)
+                    input_data[in_patch_name][count - 1] = in_patch_value
 
                 for out_patch_name, out_patch_value in output_patches.items():
+                    new_path_value = self._format_converter(out_patch_value)
                     if out_patch_name not in output_data:
-                        output_data[out_patch_name] = []
-                    output_data[out_patch_name].append(self._format_converter(out_patch_value))
+                        output_data[out_patch_name] = np.zeros((self._batch_size, ) + new_path_value.shape, dtype=new_path_value.dtype)
+                    output_data[out_patch_name][count - 1] = new_path_value
 
                 if count == self._batch_size:
-                    in_arrays = {k: np.array(v) for k, v in input_data.items()}
-                    out_arrays = {k: np.array(v) for k, v in output_data.items()}
-                    in_arrays = self._flaten_simple_input(in_arrays)
-                    out_arrays = self._flaten_simple_input(out_arrays)
+                    in_arrays = {}
+                    for k, v in input_data.items():
+                        in_arrays[k] = v if not self._copy else v.copy()
+                    out_arrays = {}
+                    for k,v in output_data.items():
+                        out_arrays[k] = v if not self._copy else v.copy()
 
-                    yield (in_arrays, out_arrays)
+                    yield (self._flaten_simple_input(in_arrays), self._flaten_simple_input(out_arrays))
                     count = 0
-                    for v in input_data.values():
-                        v.clear()
-                    for v in output_data.values():
-                        v.clear()
-        if count > 0:
-            in_arrays = {k: np.array(v) for k, v in input_data.items()}
-            out_arrays = {k: np.array(v) for k, v in output_data.items()}
-            in_arrays = self._flaten_simple_input(in_arrays)
-            out_arrays = self._flaten_simple_input(out_arrays)
 
-            yield (in_arrays, out_arrays)
-            for v in output_data.values():
-                v.clear()
-            for v in input_data.values():
-                v.clear()
+        if count > 0:
+            in_arrays = {}
+            for k, v in input_data.items():
+                subset = v[:count,:,:]
+                in_arrays[k] = subset if not self._copy else subset.copy()
+            out_arrays = {}
+            for k, v in output_data.items():
+                subset = v[:count, :, :]
+                out_arrays[k] = subset if not self._copy else subset.copy()
+
+            yield (self._flaten_simple_input(in_arrays), self._flaten_simple_input(out_arrays))
+
 
 
 class ThreadedDataGenerator(threading.Thread):

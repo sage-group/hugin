@@ -1,0 +1,2 @@
+Hugin EO Installation
+=====================

@@ -33,6 +33,15 @@ from tempfile import NamedTemporaryFile, mkdtemp
 
 from hugin.tools.IOUtils import IOUtils
 
+import yaml
+
+try:
+    from yaml import CLoader as Loader
+    from yaml import CDumper as Dumper
+except ImportError:
+    from yaml import Loader as Loader
+    from yaml import Dumper as Dumper
+
 log = logging.getLogger(__name__)
 
 
@@ -52,11 +61,13 @@ class BaseLoader(object):
                  validation_percent=0,
                  prepend_path="",
                  rasterio_env={},
-                 cache_io=False,):
+                 cache_io=False,
+                 persist_file=None):
 
         if not data_pattern:
             raise ValueError("Missing Template")
 
+        self.persist_file = persist_file
         self._data_pattern = data_pattern
         self._re = re.compile(data_pattern)
         self._validation_source = validation_source
@@ -77,10 +88,27 @@ class BaseLoader(object):
         self._validation_datasets = OrderedDict()
 
         self._filter = filter
-        self.update_datasets()
-        if self._validation_source:
-            self.update_datasets(directory=self._validation_source, datasets=self._validation_datasets)
-        self.__update_split()
+
+        if self.persist_file and os.path.exists(self.persist_file):
+            log.info("Loading datasets from persistence file: %s", self.persist_file)
+            with open(self.persist_file, "r") as f:
+                data = yaml.load(f, Loader=Loader)
+                self._evaluation_list = data['evaluation']
+                self._train_list = data['training']
+        else:
+            self.update_datasets()
+            if self._validation_source:
+                self.update_datasets(directory=self._validation_source, datasets=self._validation_datasets)
+            self.__update_split()
+            # self._evaluation_list, self._train_list
+            if self.persist_file:
+                persist_data = {
+                    'evaluation': self._evaluation_list,
+                    'training': self._train_list
+                }
+                log.info("Persisting datasets to: %s", self.persist_file)
+                with open(self.persist_file, "w") as f:
+                    yaml.dump(persist_data, f, Dumper=Dumper)
 
     def __len__(self):
         return len(self._datasets)
@@ -147,13 +175,18 @@ class BaseLoader(object):
         dataset_type = self._type_format.format(**match_components)
 
         if dataset_type in components:
-            raise KeyError("Already registered: %s %s" % (dataset_type, dataset_path))
+            raise KeyError("Already registered: %s %s %s" % (dataset_id, dataset_type, dataset_path))
         components[dataset_type] = dataset_path
         return dataset_id
 
-    def get_dataset_loader(self):
+    def get_dataset_loaders(self):
         return self.build_dataset_loaders(self.get_training_datasets(),
                                           self.get_validation_datasets())
+
+    def get_dataset_loader(self, dataset, rasterio_env=None, _cache_data=None):
+        rasterio_env = rasterio_env if rasterio_env is not None else self.rasterio_env
+        _cache_data = _cache_data if _cache_data is not None else self.cache_io
+        return DatasetGenerator((dataset, ), rasterio_env=rasterio_env, _cache_data=_cache_data)
 
     def build_dataset_loaders(self, training_datasets, validation_datasets):
         training_loader = DatasetGenerator(training_datasets, rasterio_env=self.rasterio_env, _cache_data=self.cache_io)
@@ -193,7 +226,7 @@ class FileLoader(BaseLoader):
             match = self._re.match(file_name)
             if not match:
                 continue
-            match_components = match.groupdict()
+            match_components = match.groupdict(default='')
             dataset_path = self._prepend_path + fpath
             dataset_id = self.update_dataset(match_components=match_components, dataset_path=dataset_path)
             dataset = self.get_dataset_by_id(dataset_id)
@@ -225,7 +258,7 @@ class FileSystemLoader(BaseLoader):
                 if not match:
                     continue
 
-                match_components = match.groupdict()
+                match_components = match.groupdict(default='')
                 dataset_path = self._prepend_path + fpath
                 dataset_id = self.update_dataset(dataset=datasets, match_components=match_components,
                                                  dataset_path=dataset_path)
@@ -235,12 +268,13 @@ class FileSystemLoader(BaseLoader):
                     self.remove_dataset_by_id(dataset_id)
 
 class DatasetGenerator(object):
-    def __init__(self, datasets, loop=False, rasterio_env={}, _cache_data=False, _delete_temporary_cache=True):
-        self._datasets = datasets
+    def __init__(self, datasets, loop=False, randomise_on_loop=True, rasterio_env={}, _cache_data=False, _delete_temporary_cache=True):
+        self._datasets = list(datasets)
         self.rasterio_env = rasterio_env
         self._curent_position = 0
         self.loop = loop
         self._cache_data = _cache_data
+        self.randomise_on_loop = randomise_on_loop # Reshuffle data after loop
         if self._cache_data:
             self._temp_dir = mkdtemp("cache", "hugin")
 
@@ -282,6 +316,8 @@ class DatasetGenerator(object):
             raise StopIteration()
         if self._curent_position == length:
             if self._loop:
+                if self.randomise_on_loop:
+                    random.shuffle(self._datasets)
                 self.reset()
             else:
                 raise StopIteration()

@@ -15,9 +15,8 @@ REQUIRED_PACKAGES = [
     'Fiona',
     'h5py',
     'backoff',
-    'matplotlib<3.1',
+    'matplotlib',
     'scikit-learn',
-    'imgaug'
 ]
 
 def extra_files(directory):
@@ -37,5 +36,8 @@ setup(
     entry_points = {
         'console_scripts': ['hugin=hugin.tools.cli:main'],
     },
-    description='Hugin ML4EO experimentation tool'
+    description='Hugin ML4EO experimentation tool',
+    extras_require = {
+        'hugin_data_augmentation': ["imgaug"]
+    }
 )

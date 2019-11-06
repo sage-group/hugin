@@ -31,7 +31,7 @@ from shapely.geometry import Polygon
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score, jaccard_similarity_score, \
     zero_one_loss, hamming_loss, average_precision_score, cohen_kappa_score, confusion_matrix
 
-from ..io import DatasetLoader, DataGenerator
+from ..io import DataGenerator
 from ..io.loader import adapt_shape_and_stride
 from ..tools.predict import get_probabilities_from_tiles, categorical_prediction, to_polygons
 from ..tools.utils import import_model_builder, np_mean_iou, overall_accuracy
@@ -57,7 +57,7 @@ def ensemble_avg(model_spec):
     for model_name, model_config, scene_data in model_spec:
         weight = model_config.get("weight", 1)
         total_weight += weight
-        sum_array += weight * scene_data.value
+        sum_array += weight * scene_data[()]
     result = sum_array / total_weight
     log.info("Finished averaging")
     return result
@@ -88,7 +88,7 @@ def predict_handler(config, args):
     log.info("Using datasource: %s", data_source)
     log.info("Atempting to classify data in %s", data_source.input_source)
 
-    dataset_loader, _ = data_source.get_dataset_loader()
+    dataset_loader, _ = data_source.get_dataset_loaders()
 
     log.info("classifying %d datasets", len(dataset_loader))
 
@@ -160,8 +160,8 @@ def predict_handler(config, args):
             input_mapping = mapping["inputs"]
             output_mapping = mapping.get("target", {})
 
-            tile_loader = DatasetLoader((scene,), rasterio_env=dataset_loader.rasterio_env,
-                                        _cache_data=dataset_loader._cache_data)
+            tile_loader = data_source.get_dataset_loader(scene)
+
             tile_loader.reset()
             data_generator = DataGenerator(tile_loader,
                                            batch_size=batch_size,

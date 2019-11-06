@@ -24,22 +24,25 @@ from hugin.tools.utils import custom_objects, dice_coef
 
 
 @custom_objects({'dice_coef': dice_coef})
-def unet_v14(input_width=256,
-             input_height=256,
-             n_channels=3,
-             kernel=3,
-             stride=1,
-             activation='elu',
-             output_channels=2,
-             kinit='RandomUniform',
-             batch_norm=True,
-             padding='same',
-             axis=3,
-             crop=0,
-             mpadd=0,
+def unet_v14(
+        name,
+        input_shapes,
+        output_shapes,
+        kernel=3,
+        stride=1,
+        activation='elu',
+        output_channels=2,
+        kinit='RandomUniform',
+        batch_norm=True,
+        padding='same',
+        axis=3,
+        crop=0,
+        mpadd=0,
              ):
     nr_classes = output_channels
-    inputs = Input((input_height, input_width, n_channels))
+    input_1_height, input_1_width, input_1_channels = input_shapes["input_1"]
+
+    inputs = Input((input_1_height, input_1_width, input_1_channels))
 
     conv1 = ZeroPadding2D((crop, crop))(inputs)
 
