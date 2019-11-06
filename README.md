@@ -12,6 +12,8 @@ Overall Hugin aims to facilitate experimentation with multiple machine learning 
 
 Currently Hugin builds on top of the Keras machine learning library but it also aims to support, in the future, additional backends like scikit-learn.
 
+Documentation for Hugin is available at https://hugin-eo.readthedocs.io/ 
+
 ------------------
 
 ## Installation
@@ -19,7 +21,7 @@ Currently Hugin builds on top of the Keras machine learning library but it also 
 
 ### Prerequisits
 
-As previously mentioned Hugin builds on top of Keras but, depending on your usecase it might also depend on TensorFlow 
+Hugin builds on top of existing tools, particularly Keras but, depending on your usecase it might also depend on TensorFlow 
 for providing additional IO functionality (particularly cloud storage), or for supporting models specific for various Keras backends
 
 ### Using pip
