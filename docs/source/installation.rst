@@ -1,5 +1,5 @@
-Hugin EO Installation
-=====================
+Installation
+============
 
 Prerequisites
 ------------

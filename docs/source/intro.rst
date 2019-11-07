@@ -158,37 +158,39 @@ An example configuration:
 .. code-block:: yaml
    :linenos:
 
-   model: !!python/object/apply:hugin.engine.keras.KerasModel
-     kwds:
-       name: keras_model1
-       model_builder: sn5.models.wnet.wnetv9:build_wnetv9
-       batch_size: 200
-       epochs: 9999
-       metrics:
-         - accuracy
-         - !!python/name:hugin.tools.utils.dice_coef
-         - !!python/name:hugin.tools.utils.jaccard_coef
-       loss: categorical_crossentropy
-       checkpoint:
-         monitor: val_loss
-       enable_multi_gpu: True
-       num_gpus: 4
-       optimizer: !!python/object/apply:keras.optimizers.Adam
-         kwds:
-           lr: !!float 0.0001
-           beta_1: !!float 0.9
-           beta_2: !!float 0.999
-           epsilon: !!float 1e-8
-       callbacks:
-         - !!python/object/apply:keras.callbacks.EarlyStopping
-           kwds:
-             monitor: 'val_dice_coef'
-             min_delta: 0
-             patience: 40
-             verbose: 1
-             mode: 'auto'
-             baseline: None
-             restore_best_weights: False
+    model: !!python/object/apply:hugin.engine.keras.KerasModel
+      kwds:
+        name: keras_model1
+        model_builder: sn5.models.wnet.wnetv9:build_wnetv9
+        batch_size: 200
+        epochs: 9999
+        metrics:
+          - accuracy
+          - !!python/name:hugin.tools.utils.dice_coef
+          - !!python/name:hugin.tools.utils.jaccard_coef
+        loss: categorical_crossentropy
+        checkpoint:
+          monitor: val_loss
+        enable_multi_gpu: True
+        num_gpus: 4
+        optimizer: !!python/object/apply:keras.optimizers.Adam
+          kwds:
+            lr: !!float 0.0001
+            beta_1: !!float 0.9
+            beta_2: !!float 0.999
+            epsilon: !!float 1e-8
+        callbacks:
+          - !!python/object/apply:keras.callbacks.EarlyStopping
+            kwds:
+              monitor: 'val_dice_coef'
+              min_delta: 0
+              patience: 40
+              verbose: 1
+              mode: 'auto'
+              baseline: None
+              restore_best_weights: False
+
+
 
 Limitations
 ^^^^^^^^^^^
@@ -197,6 +199,94 @@ Limitations
  - Hugin only support square sliding windows. This is expected to be fixed in an upcoming version
  - Hugin only support the same stride size both horizontally and vertically
 
+Example Experiment
+::::::::::::::::::
+
+A complete example configuration is depicted bellow:
+
+
+.. code-block:: yaml
+   :linenos:
+
+   configuration:
+    model_path: "/home/user/experiments/{name}"
+   data_source: !!python/object/apply:hugin.io.FileSystemLoader
+    kwds:
+      data_pattern: '(?P<category>[0-9A-Za-z_]+)_AOI_(?P<location>\d+(_[A-Za-z0-9]+)+)_(?P<type>(PS-MS|PS-RGB|MS|PAN))_(?P<idx>[A-Za-z0-9]+)(?P<gti>_GTI)?.(?P<extension>(tif|tiff|png|jpg|jp2))$'
+      id_format: '{location}-{idx}'
+      type_format: '{type}{gti}'
+      validation_percent: 0.2
+      randomise: True
+      persist_file: "/storage/spacenet5/split1.yaml"
+      input_source: "/storage/spacenet5"
+   trainer: !!python/object/apply:hugin.infer.scene.RasterSceneTrainer
+            kwds:
+              name: raster_keras_trainerv2
+              stride_size: 100
+              window_size: [256, 256]
+              model: !!python/object/apply:hugin.engine.keras.KerasModel
+                kwds:
+                  name: keras_model1
+                  model_builder: sn5.models.wnet.wnetv9:build_wnetv9
+                  batch_size: 200
+                  epochs: 9999
+                  metrics:
+                    - accuracy
+                    - !!python/name:hugin.tools.utils.dice_coef
+                    - !!python/name:hugin.tools.utils.jaccard_coef
+                  loss: categorical_crossentropy
+                  checkpoint:
+                    monitor: val_loss
+                  enable_multi_gpu: True
+                  num_gpus: 4
+                  optimizer: !!python/object/apply:keras.optimizers.Adam
+                    kwds:
+                      lr: !!float 0.0001
+                      beta_1: !!float 0.9
+                      beta_2: !!float 0.999
+                      epsilon: !!float 1e-8
+                  callbacks:
+                    - !!python/object/apply:keras.callbacks.EarlyStopping
+                      kwds:
+                        monitor: 'val_dice_coef'
+                        min_delta: 0
+                        patience: 40
+                        verbose: 1
+                        mode: 'auto'
+                        baseline: None
+                        restore_best_weights: False
+              mapping:
+                inputs:
+                  input_1:
+                    primary: True
+                    channels:
+                      - [ "PAN", 1 ]
+                    window_size: [256, 256]
+                  input_2:
+                    window_size: [64, 64]
+                    channels:
+                      - [ "MS", 1 ]
+                      - [ "MS", 5 ]
+                      - [ "MS", 4 ]
+                      - [ "MS", 8 ]
+                target:
+                  output_1:
+                    channels:
+                      - [ "PAN_GTI", 1 ]
+                    preprocessing:
+                      - !!python/object/apply:hugin.io.loader.BinaryCategoricalConverter
+                        kwds:
+                          do_categorical: False
+
+
+Assuming that the above configuration is saved in a file named `experiment.yaml`, training can be started as follows:
+
+
+.. code-block:: bash
+
+   hugin trainv2 --config experiment.yaml
+
+
 Prediction
 ~~~~~~~~~~
 
@@ -204,3 +294,6 @@ Prediction
 
 Mapping
 ~~~~~~~
+
+The data mapping functionality represents one of the core features of Hugin.
+It is used by the `RasterSceneTrainer` and `RasterScenePredictor` for assembling input data that is sent to the underlying models.

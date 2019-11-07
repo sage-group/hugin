@@ -17,8 +17,8 @@ Currently Hugin builds on top of the Keras machine learning library but it also 
 .. toctree::
    :maxdepth: 4
 
-   intro
    installation
+   intro
    topics/index
    api/index
    contributing
