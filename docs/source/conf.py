@@ -60,6 +60,7 @@ html_static_path = ['_static']
 
 latex_elements = {
 	'papersize': 'a4paper',
+	'extraclassoptions': 'openany,oneside',
 	'pointsize': '12pt',
 	'preamble': r'''
 		\usepackage{charter}
