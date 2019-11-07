@@ -133,6 +133,63 @@ This configuration option specifies the model to be trained. It is a reference t
 Keras Model
 +++++++++++
 
+The `KerasModel` implementation allow running models defined using Keras. It exposes the following options:
+
+ - `name` **(mandatory)**: Option specifying the name of the model
+ - `model_path` **(optional)**: The location of the trained model. If it exists it is loaded and training resumes from the loaded state. This is particularly useful for transfer learning
+ - `model_builder` **(mandatory)**: The function to be called for building the model
+ - `loss` **(mandatory)**: Loss function to be used by Keras during training. Any `Keras loss <https://keras.io/losses/>`_ can be referenced, or used defined functions
+ - `optimizer` **(optional)**: Optimizer function to be used during training. Any `Keras optimizer <https://keras.io/optimizers/>`_ can be referenced
+ - `batch_size` **(mandatory)**: The batch size to be used for feeding the data to the model
+ - `epochs` **(mandatory)**: The maximum number of epochs to run
+ - `metrics` **(optional)**: A list of metrics to be computed during training
+ - `checkpoint` **(optional)**: If defined it enables model checkpoints according to specified configuration. It allows setting the following options:
+
+   - `save_best_only` **(default: False)**: Saves only the best model
+   - `save_weights_only` **(default: False)**: Save only the model weights
+   - `mode` **(valid options: auto, min, max)**: Save models  based on either the maximization or the minimization of the monitored quantity. This only applies when `save_best_only` is enabled
+   - `monitor`: quantity to be monitored (eg. `val_loss` or any user defined metric)
+ - `enable_multi_gpu` **(optional, default=False)**: enable multiple GPU usage
+ - `num_gpus` **(optional)**: number of GPUs to be used by Keras
+ - `callbacks` **(optional)**: list of Keras callbacks to be enabled. List is composed out of `Keras callbacks <https://keras.io/callbacks/>`_ or compatible user defined callbacks.
+
+An example configuration:
+
+.. code-block:: yaml
+   :linenos:
+
+   model: !!python/object/apply:hugin.engine.keras.KerasModel
+     kwds:
+       name: keras_model1
+       model_builder: sn5.models.wnet.wnetv9:build_wnetv9
+       batch_size: 200
+       epochs: 9999
+       metrics:
+         - accuracy
+         - !!python/name:hugin.tools.utils.dice_coef
+         - !!python/name:hugin.tools.utils.jaccard_coef
+       loss: categorical_crossentropy
+       checkpoint:
+         monitor: val_loss
+       enable_multi_gpu: True
+       num_gpus: 4
+       optimizer: !!python/object/apply:keras.optimizers.Adam
+         kwds:
+           lr: !!float 0.0001
+           beta_1: !!float 0.9
+           beta_2: !!float 0.999
+           epsilon: !!float 1e-8
+       callbacks:
+         - !!python/object/apply:keras.callbacks.EarlyStopping
+           kwds:
+             monitor: 'val_dice_coef'
+             min_delta: 0
+             patience: 40
+             verbose: 1
+             mode: 'auto'
+             baseline: None
+             restore_best_weights: False
+
 Limitations
 ^^^^^^^^^^^
 
