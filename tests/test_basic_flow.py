@@ -44,7 +44,6 @@ def mapping():
     }
     return mapping_conf
 
-"""
 @pytest.fixture
 def raster_predictors(mapping):
     identity_model = IdentityModel(name="dummy_identity_model", num_loops=3)
@@ -60,7 +59,6 @@ def raster_predictors(mapping):
     )
 
     return raster_predictor
-"""
 
 # @pytest.mark.skipif(not runningInCI(), reason="Skipping running locally as it might be too slow")
 def test_identity_complete_flow(generated_filesystem_loader, mapping):
