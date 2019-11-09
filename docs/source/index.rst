@@ -19,10 +19,13 @@ Currently Hugin builds on top of the Keras machine learning library but it also 
 
    installation
    intro
-   topics/index
    api/index
    contributing
    faq
+
+Indices and Tables
+==================
+
 
 
 

@@ -21,9 +21,17 @@ project = 'Hugin EO'
 copyright = '2019, HuginEO Contributors'
 author = 'Marian Neagul, Teodora Selea, Gabriel Iuhasz, Alexandru Munteanu'
 
-# The full version, including alpha/beta/rc tags
-release = '0.2.0'
-
+try:
+	import hugin
+	release = hugin.__version__
+except:
+	with open('../src/hugin/__init__.py') as f:
+		for line in f:
+			if line.find("__version__") >= 0:
+				version = line.split("=")[1].strip()
+				version = version.strip('"')
+				version = version.strip("'")
+				continue
 
 # -- General configuration ---------------------------------------------------
 

@@ -15,7 +15,9 @@ Using pip
 From PyPi
 ~~~~~~~~~
 
-ToDo
+.. code-block:: bash
+
+   pip install hugin
 
 From GitHub
 ~~~~~~~~~~~~
