@@ -37,16 +37,18 @@ log = getLogger(__name__)
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Hugin')
-    parser.add_argument('--config', type=argparse.FileType('r'), required=False, default=None,
-                        help='Path to config file')
+    parser = argparse.ArgumentParser(description='HuginEO -- Machine Learning for Earth Observation tool')
     subparsers = parser.add_subparsers(help='Available commands')
 
     train_parser = subparsers.add_parser('train', help="Train a model")
+    train_parser.add_argument('--config', type=argparse.FileType('r'), required=False, default=None,
+                              help='Path to config file')
     train_parser.add_argument('--input-dir', required=False, default=None)
     train_parser.set_defaults(func=train_handler)
 
     predict_parser = subparsers.add_parser('predict', help='Run prediction')
+    predict_parser.add_argument('--config', type=argparse.FileType('r'), required=False, default=None,
+                                help='Path to config file')
     predict_parser.add_argument('--input-dir', required=True)
     predict_parser.add_argument('--output-dir', required=False, default=None)
     predict_parser.set_defaults(func=predict_handler)

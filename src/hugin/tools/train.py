@@ -39,5 +39,4 @@ def train_handler(config, args):
     trainer.train_scenes(dataset_loader, validation_scenes=validation_loader)
     log.info("Training completed")
     log.info("Saving configuration to: %s", destination)
-    print (trainer)
     trainer.save()
