@@ -23,6 +23,13 @@ matrix:
       env:
         - PIP_CMD=pip3
         - PYTHON=python3
+deploy:
+  provider: pypi
+  on:
+    tags: true
+  user: "__token__"
+  password:
+    secure: SYFWoKqgrBsWKvY/9YUXg2spXcsNx5FVi1rahVQE50LOBPE0spKVOxu1ZK0vVBtOujhUkJdn7c5iFPf85PjkS8ZQ+TkE9YzW98V92zO3UVtC8UWCLEjN2TlQzWqasxfPSXXNXpVLr1SNdVYlWNIixyiYLoZU4JiIoXmk31mm/ueIjZRCbm3JgJuy+qVKKKU8yzeL67qrlf3YGiNbx4vJBbtZj4TMmn1wOl4AgKTq6o4rma8N6oZx9yaDVS6ZfOvsOXCISPMdg904ECN1jzXEoz14ym/ZHW0DMM7H5S2EVspwW6phcwLP5TGgVxc1hta7CCutcIloM/8G8miFfHDBWEI2HhZTGthyiuVf23TGPJeVnQ+bTRCYs7F+w2NY+/SS0KLdcyrxD8eiuzPXzj8vU03lerw/koB/Xr3qg9/s+IkttTTahGJkdhCf6XG4+IJZa7U8hABIABinmjfKOSWEzTmeQwiwksfIOFqcfgEd4Y+7Ttty/o7BPg5T+lRer/cAvPYr6ZJnQGOHZYSLx4JONU0MxYy23L6KGEnb3fAa1323VlVXNpreGJ7rH+ZoDvvIKuGN0mG66Bly097mqsaQasoFuwVQjfB2HUvpV0AQXzCsgAbqH3fwDipqg0EVMImoZgAmXk5BuV0UbySiPivKfWgEYJxvq4w76SG2hm3/oTM=
 install:
   - $PIP_CMD install --upgrade pip
   - $PIP_CMD install -r requirements.txt
