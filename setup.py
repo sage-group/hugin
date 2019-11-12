@@ -16,6 +16,7 @@ REQUIRED_PACKAGES = [
     'backoff',
     'matplotlib',
     'scikit-learn',
+    'tqdm',
 ]
 
 
