@@ -25,6 +25,7 @@ matrix:
         - PYTHON=python3
 deploy:
   provider: pypi
+  skip_existing: true
   on:
     tags: true
   user: "__token__"
