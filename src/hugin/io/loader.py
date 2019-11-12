@@ -342,6 +342,9 @@ class DataGenerator(object):
         if type(output_mapping) is list or type(output_mapping) is tuple:
             output_mapping = self._convert_output_mapping(output_mapping)
 
+        if len(input_mapping.keys()) == 1: # Single mapping. Should be primary by default
+            input_mapping[list(input_mapping.keys())[0]]['primary'] = True
+
         primary_mapping = [input_mapping[m] for m in input_mapping if input_mapping[m].get('primary', False)]
 
 

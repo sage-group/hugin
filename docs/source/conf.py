@@ -21,9 +21,17 @@ project = 'Hugin EO'
 copyright = '2019, HuginEO Contributors'
 author = 'Marian Neagul, Teodora Selea, Gabriel Iuhasz, Alexandru Munteanu'
 
-# The full version, including alpha/beta/rc tags
-release = '0.2.0'
-
+try:
+	import hugin
+	release = hugin.__version__
+except:
+	with open('../src/hugin/__init__.py') as f:
+		for line in f:
+			if line.find("__version__") >= 0:
+				version = line.split("=")[1].strip()
+				version = version.strip('"')
+				version = version.strip("'")
+				continue
 
 # -- General configuration ---------------------------------------------------
 
@@ -57,3 +65,14 @@ html_theme = 'sphinx_rtd_theme'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+latex_elements = {
+	'papersize': 'a4paper',
+	'extraclassoptions': 'openany,oneside',
+	'pointsize': '12pt',
+	'preamble': r'''
+		\usepackage{charter}
+		\usepackage[defaultsans]{lato}
+		\usepackage{inconsolata}
+	''',
+}

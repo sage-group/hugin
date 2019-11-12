@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import pytest
@@ -10,6 +11,7 @@ from hugin.engine.scene import RasterSceneTrainer, AvgEnsembleScenePredictor, Ra
     RasterIOSceneExporter
 from hugin.io.loader import BinaryCategoricalConverter
 from tests.conftest import generate_filesystem_loader
+
 
 
 #@pytest.fixture
@@ -63,6 +65,13 @@ def raster_predictors(mapping):
 # @pytest.mark.skipif(not runningInCI(), reason="Skipping running locally as it might be too slow")
 def test_identity_complete_flow(generated_filesystem_loader, mapping):
     _test_identity_training(generated_filesystem_loader, IdentityModel, mapping)
+
+    ### Fix Issue #6
+    no_primary_mapping = deepcopy(mapping)
+    del no_primary_mapping["inputs"]["input_1"]["primary"]
+    _test_identity_training(generated_filesystem_loader, IdentityModel, no_primary_mapping)
+    ### End Issue #6
+
     new_mapping = mapping.copy()
     del new_mapping['target']
     _test_identity_prediction(generated_filesystem_loader, IdentityModel, new_mapping)

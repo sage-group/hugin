@@ -7,22 +7,25 @@ Hugin helps scientists run Machine Learning experiments on geospatial raster dat
 Hugin was developed as part of the ESA funded ML4EO_
 
 Overall Hugin aims to facilitate experimentation with multiple machine learning problems, like:
- * Classification
- * Segmentation
- * Super-Resolution
+
+ - Classification
+ - Segmentation
+ - Super-Resolution
 
 Currently Hugin builds on top of the Keras machine learning library but it also aims to support, in the future, additional backends like scikit-learn.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
 
-   intro
    installation
-   quickstart
-   topics/index
+   intro
    api/index
    contributing
    faq
+
+Indices and Tables
+==================
+
 
 
 
