@@ -28,9 +28,17 @@ def extra_files(directory):
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+with open('src/hugin/__init__.py') as f:
+    for line in f:
+        if line.find("__version__") >= 0:
+            version = line.split("=")[1].strip()
+            version = version.strip('"')
+            version = version.strip("'")
+            continue
+
 setup(
     name='hugin',
-    version='0.2.0b2',
+    version=version,
     license='apache-2.0',
     description='HuginEO - Machine Learning for Earth Observation experimentation tool',
     long_description=long_description,

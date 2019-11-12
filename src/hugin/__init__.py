@@ -14,5 +14,4 @@ __license__ = \
    limitations under the License.
 """
 
-import pkg_resources
-__version__ = pkg_resources.get_distribution('hugin').version
+__version__ = '0.2.0'
