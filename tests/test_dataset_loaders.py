@@ -238,5 +238,3 @@ class TestDataGenerator(object):
     #     dset = rasterio.open(img_path)
     #     img = dset.read()
     #     assert len(train_data) == 72
-
-
