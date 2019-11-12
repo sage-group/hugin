@@ -166,13 +166,16 @@ class AverageMerger(PredictionMerger):
 
 
 class SkLearnStandardizer(RasterModel):
-    def __init__(self, model_path, *args, copy=True, with_mean=True, with_std=True, **kw):
+    def __init__(self, model_path, with_gti = True, *args, copy=True, with_mean=True, with_std=True, **kw):
         RasterModel.__init__(self, *args, **kw)
-        self.model_path = model_path
+        self.destination = model_path
         self.copy = copy
         self.with_mean = with_mean
         self.with_std = with_std
-        self.scalers = {}
+        self._with_gti = with_gti
+        self._single_input = True
+        self._scalers = []
+        self._multiple_input_scalers = {}
 
     def fit_generator(self, train_data, validation_data=None):
         from tqdm import tqdm
@@ -180,28 +183,68 @@ class SkLearnStandardizer(RasterModel):
         train_data.loop = False
         pbar = tqdm(total=count)
         with pbar:
-            for _ in range(0, count):
+            for i in range(0, count):
                 pbar.update(1)
                 tile = next(train_data)
-                train_tile = tile[0]
-                for inp_name, inp_value in train_tile.items():
-                    if inp_name not in self.scalers:
-                        self.scalers[inp_name] = StandardScaler(copy=self.copy, with_std=self.with_std,
-                                                                with_mean=self.with_mean)
-                    scaler = self.scalers[inp_name]
-                    data = inp_value.ravel()
-                    inp = data.reshape((data.shape + (1,)))
-                    scaler.partial_fit(inp)
+
+                try:
+                    for input_name, data in tile[0].items():
+                        if input_name not in self._multiple_input_scalers:
+                            self._multiple_input_scalers[input_name] =\
+                                (StandardScaler(copy=self.copy, with_std=self.with_std,
+                                                with_mean=self.with_mean),
+                                 StandardScaler(copy=self.copy, with_std=self.with_std,
+                                                with_mean=self.with_mean))
+
+                            in_scaler = self._multiple_input_scalers[input_name][0]
+                            out_scaler = self._multiple_input_scalers[input_name][0]
+
+                            in_data = tile[0][input_name].ravel()
+                            out_data = tile[1].ravel()
+
+                            inp = in_data.reshape((in_data.shape + (1,)))
+                            outp = out_data.reshape((out_data.shape + (1,)))
+                            in_scaler.partial_fit(inp)
+                            out_scaler.partial_fit(inp)
+                    self._single_input = False
+
+                # Then we have single input
+                except AttributeError:
+                    self._scalers.append((StandardScaler(copy=self.copy, with_std=self.with_std,
+                                                         with_mean=self.with_mean),
+                                          StandardScaler(copy=self.copy, with_std=self.with_std,
+                                                        with_mean=self.with_mean)))
+
+                    in_scaler = self._scalers[i][0]
+                    out_scaler = self._scalers[i][1]
+
+                    in_data = tile[0].ravel()
+                    out_data = tile[1].ravel()
+
+                    inp = in_data.reshape((in_data.shape + (1,)))
+                    outp = out_data.reshape((out_data.shape + (1,)))
+                    in_scaler.partial_fit(inp)
+                    out_scaler.partial_fit(inp)
 
     def save(self, destination):
         if not os.path.exists(destination):
             os.makedirs(destination)
-        for mapping_name, scaler in self.scalers.items():
-            scaler_destination = os.path.join(destination, mapping_name)
-            log.info("Saving scaler for %s to %s", mapping_name, scaler_destination)
-            outs = pickle.dumps(scaler)
-            with open(scaler_destination, "wb") as f:
-                f.write(outs)
+
+        if self._single_input:
+            for id, scaler in enumerate(self._scalers):
+                for i, mode in enumerate(['input', 'gti_']):
+                    scaler_destination = os.path.join(destination, mode + str(id) + '.pkl')
+                    outs = pickle.dumps(scaler[i])
+                    with open(scaler_destination, "wb") as f:
+                        f.write(outs)
+
+        else:
+            for input_name, scaler in self._multiple_input_scalers.items():
+                for i, mode in enumerate(['', '_gti']):
+                    scaler_destination = os.path.join(destination, input_name + mode + '.pkl')
+                    outs = pickle.dumps(scaler[i])
+                    with open(scaler_destination, "wb") as f:
+                        f.write(outs)
 
 
 class IdentityModel(RasterModel):
