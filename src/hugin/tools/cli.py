@@ -42,23 +42,14 @@ def main():
                         help='Path to config file')
     subparsers = parser.add_subparsers(help='Available commands')
 
-    parser_trainv2 = subparsers.add_parser('train', help="Train a model")
-    parser_trainv2.add_argument('--config', required=True, type=argparse.FileType('r'),
-                                help="Path to configuration file")
-    parser_trainv2.add_argument('--input-dir', required=False, default=None)
-    parser_trainv2.set_defaults(func=train_handler)
+    train_parser = subparsers.add_parser('train', help="Train a model")
+    train_parser.add_argument('--input-dir', required=False, default=None)
+    train_parser.set_defaults(func=train_handler)
 
-    parser_predictv3 = subparsers.add_parser('predict', help='Run prediction')
-    parser_predictv3.add_argument('--ensemble-config', required=True,
-                                  type=argparse.FileType('r'),
-                                  help='Path to the ensable configuration')
-    parser_predictv3.add_argument('--input-dir', required=True)
-    parser_predictv3.add_argument('--data-source', required=False, default='directory',
-                                  help='Data source for input data. Defaults to directory')
-    parser_predictv3.add_argument('--output-dir', required=False, default=None)
-    parser_predictv3.add_argument('--output-text', default=None, type=argparse.FileType('w'))
-    parser_predictv3.add_argument('--scoring-gti', default=None, type=str, help="Component to use for scoring")
-    parser_predictv3.set_defaults(func=predict_handler)
+    predict_parser = subparsers.add_parser('predict', help='Run prediction')
+    predict_parser.add_argument('--input-dir', required=True)
+    predict_parser.add_argument('--output-dir', required=False, default=None)
+    predict_parser.set_defaults(func=predict_handler)
 
     args = parser.parse_args()
 
