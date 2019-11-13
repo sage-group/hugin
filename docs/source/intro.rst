@@ -50,6 +50,9 @@ An example configuration specification could be:
    configuration:
     model_path: "/home/user/experiments/{name}"
 
+
+.. _training-datasource-presentation:
+
 Data Source Specification
 :::::::::::::::::::::::::
 
@@ -128,7 +131,9 @@ This configuration option specifies the model to be trained. It is a reference t
 
  - `KerasModel`: The backend supporting running Keras based models
  - `SkLearnStandardizer`: A custom backend based on SciKit-Learn for training an SciKit-Learn data standardizer
- - `SciKitLearnModel`: A backend for supporting model complient to the SciKit-Learn interface (ToDo)
+ - `SciKitLearnModel`: A backend for supporting model compliant to the SciKit-Learn interface (ToDo)
+
+.. _keras-model-presentation:
 
 Keras Model
 +++++++++++
@@ -284,11 +289,129 @@ Assuming that the above configuration is saved in a file named `experiment.yaml`
 
 .. code-block:: bash
 
-   hugin trainv2 --config experiment.yaml
+   hugin train --config experiment.yaml
 
 
 Prediction
 ~~~~~~~~~~
+
+Similarly to training, the prediction processes involved the creation of a prediction configuration file.
+The configuration file is similar to the training file and involves:
+
+ - Data source specification (the `data_source` key)
+ - Predictor configuration (the `predictor` key)
+ - Output configuration (the `output` key)
+
+Data Source Specification
+:::::::::::::::::::::::::
+
+The data source specification is identical to :ref:`training-datasource-presentation` used during the training.
+
+Predictor Configuration
+:::::::::::::::::::::::
+
+This section of the configuration file is aimed in configuring the predictors handling the raster files.
+The predictors handle the tilling of input image (if needed) and fit the data to the machine learning models, assembling the overall prediction.
+
+Currently we provide the following raster based predictors:
+
+ - `RasterScenePredictor`: providing the core raster scene handling, delegating the prediction to a trained model
+ - `AvgEnsembleScenePredictor`: provides ensembling between multiple instances of `RasterScenePredictor`
+
+RasterScenePredictor
+^^^^^^^^^^^^^^^^^^^^
+
+The `RasterScenePredictor` is similar to the `RasterSceneTrainer`, providing similar capabilities.
+
+The options provided by the `RasterScenePredictor` are:
+
+ - `name` **(mandatory)**: specified a name for the predictor
+ - `window_size` **(optional)**: specifies the size of the sliding window used for subsampling. If omitted Hugin assumes that it equals the size of one of the randomly picked scenes
+ - `stride_size` **(optional)**: specifies the stride size to be used in case subsampling is needed. If omitted it is inferred from the window size
+ - `mapping` **(mandatory)**: this configuration option specifies how the input to the model should be assembled. This configuration might be shared both between training and prediction time. It is further discussed in (discussed in :ref:`mapping-presentation` section)
+ - `model` **(mandatory)** specifies to model to be used for prediction
+
+Mapping
++++++++
+
+The mapping concept is further discussed in the :ref:`mapping-presentation` section.
+During the prediction process the presence of the `target` mapping is optional, and if provided it will be used for computing performance metrics
+
+Model
++++++
+
+This configuration option specifies the model to be trained. It is a reference to one of the backend implementations offered by Hugin:
+
+ - `KerasModel`: The backend supporting running Keras based models
+ - `IdentityModel`: Dummy model returning as prediction its input
+ - `SciKitLearnModel`: A backend for supporting model compliant to the SciKit-Learn interface (ToDo)
+
+
+Keras Model
++++++++++++
+
+The model configuration is identical to the one described in :ref:`keras-model-presentation` with the the difference that most arguments are ignored, with the exception of `batch_size`.
+
+Example configuration
++++++++++++++++++++++
+
+Output configuration
+::::::::::::::::::::
+
+This configuration section is responsible for exporting the predictions.
+
+Hugin supports multiple exports:
+
+ - `RasterIOSceneExporter`: exporter dumping the prediction output in geo-referenced Tiff files
+ - `GeoJSONExporter`: exporter vectorizing prediction masks and outputting in GeoJSON files
+ - `MultipleFormatExporter`: an compound exporter allowing exporting in multiple formats
+
+
+RasterIO Exporter
+^^^^^^^^^^^^^^^^^
+
+The RasterIO Exporter provides the ability of exporting geo-referenced Tiff files.
+Exported files inherit the SRS of a specified component of a scene.
+
+The options supported by the exporter are:
+
+ - `srs_source_component` **(optional)**: the component of the scene that should be the source of the SRS and coordinates
+ - `filename_pattern` **(optional, default: "{scene_id}.tif")**: the filename pattern that should be used for newly created files
+ - `rasterio_creation_options` **(optional)**: Options updating various RasterIO/GDAL profile options. See `RasterIO Profile <https://rasterio.readthedocs.io/en/stable/topics/profiles.html>`_ for more detailed information.
+ - `rasterio_options` **(optional)**: Options controlling the RasterIO environment. See `RasterIO Environment <https://rasterio.readthedocs.io/en/stable/api/rasterio.env.html>`_ for more detailed information.
+
+
+Multiple Format Exporter
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+This exporter allows exporting predictions in multiple formats by wrapping the other supported exporters.
+
+The options supported by the exporter are:
+
+ - `exporters` **(optional)**: a list o exporters. Each exporter will be triggered separately for each prediction.
+
+An example configuration for an exporter could be:
+
+.. code-block:: yaml
+   :linenos:
+
+   output: !!python/object/apply:hugin.engine.scene.RasterIOSceneExporter
+     kwds:
+        filename_pattern: '{scene_id}.tif'
+        srs_source_component: 'RGB'
+
+Example configuration
+:::::::::::::::::::::
+
+.. code-block:: yaml
+   :linenos:
+
+   output: !!python/object/apply:hugin.engine.scene.RasterIOSceneExporter
+     kwds:
+        filename_pattern: '{scene_id}.tif'
+        srs_source_component: 'RGB'
+
+
 
 .. _mapping-presentation:
 
