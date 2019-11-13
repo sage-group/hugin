@@ -352,6 +352,8 @@ Keras Model
 
 The model configuration is identical to the one described in :ref:`keras-model-presentation` with the the difference that most arguments are ignored, with the exception of `batch_size`.
 
+Example configuration
++++++++++++++++++++++
 
 Output configuration
 ::::::::::::::::::::
@@ -363,6 +365,7 @@ Hugin supports multiple exports:
  - `RasterIOSceneExporter`: exporter dumping the prediction output in geo-referenced Tiff files
  - `GeoJSONExporter`: exporter vectorizing prediction masks and outputting in GeoJSON files
  - `MultipleFormatExporter`: an compound exporter allowing exporting in multiple formats
+
 
 RasterIO Exporter
 ^^^^^^^^^^^^^^^^^
@@ -386,6 +389,29 @@ This exporter allows exporting predictions in multiple formats by wrapping the o
 The options supported by the exporter are:
 
  - `exporters` **(optional)**: a list o exporters. Each exporter will be triggered separately for each prediction.
+
+An example configuration for an exporter could be:
+
+.. code-block:: yaml
+   :linenos:
+
+   output: !!python/object/apply:hugin.engine.scene.RasterIOSceneExporter
+     kwds:
+        filename_pattern: '{scene_id}.tif'
+        srs_source_component: 'RGB'
+
+Example configuration
+:::::::::::::::::::::
+
+.. code-block:: yaml
+   :linenos:
+
+   output: !!python/object/apply:hugin.engine.scene.RasterIOSceneExporter
+     kwds:
+        filename_pattern: '{scene_id}.tif'
+        srs_source_component: 'RGB'
+
+
 
 .. _mapping-presentation:
 

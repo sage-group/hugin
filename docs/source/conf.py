@@ -66,6 +66,14 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+html_logo = '_static/hugin-logov1.png'
+latex_logo = '_static/hugin-logov1.pdf'
+
+latex_documents = [
+    (master_doc, 'hugineo.tex', u'HuginEO Documentation',
+     u'Hugin EO Contributors', 'manual'),
+]
+
 latex_elements = {
 	'papersize': 'a4paper',
 	'extraclassoptions': 'openany,oneside',
