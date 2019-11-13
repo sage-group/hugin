@@ -5,6 +5,7 @@ from setuptools import setup
 
 REQUIRED_PACKAGES = [
     'Keras',
+    'tensorflow',
     'geojson',
     'rasterio',
     'scikit-image',
