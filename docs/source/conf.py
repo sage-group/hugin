@@ -40,7 +40,9 @@ except:
 # ones.
 extensions = [
 	'recommonmark',
-	'sphinx_rtd_theme'
+	'sphinx_rtd_theme',
+	'sphinx.ext.napoleon',
+	'sphinx.ext.autodoc'
 ]
 
 master_doc = 'index'
