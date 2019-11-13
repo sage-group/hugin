@@ -48,7 +48,7 @@ log = logging.getLogger(__name__)
 class BaseLoader(object):
 
     def __init__(self,
-                 data_pattern=None,
+                 data_pattern: str = None,
                  validation_source=None,
                  randomise=False,
                  randomise_training=False,
@@ -63,6 +63,25 @@ class BaseLoader(object):
                  rasterio_env={},
                  cache_io=False,
                  persist_file=None):
+        """
+
+        Args:
+            data_pattern: Pattern used for grouping data
+            validation_source:
+            randomise: Whether the data should be randomised or not
+            randomise_training: Whether the training set should be randomised
+            randomise_validation: Whether the validation set should be randomised
+            mapping: A mapping between discovered datasets and data types
+            type_format: Format used for grouping between discovered datasets and types
+            id_format: Format used for identifying data types
+            custom_attributes:
+            filter:
+            validation_percent:
+            prepend_path:
+            rasterio_env:
+            cache_io:
+            persist_file:
+        """
 
         if not data_pattern:
             raise ValueError("Missing Template")
@@ -110,7 +129,12 @@ class BaseLoader(object):
                 with open(self.persist_file, "w") as f:
                     yaml.dump(persist_data, f, Dumper=Dumper)
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """Computes the number of datasets
+
+        Returns: The number of datasets
+
+        """
         return len(self._datasets)
 
     def __update_split(self):
@@ -241,15 +265,15 @@ class FileSystemLoader(BaseLoader):
         self.input_source = input_source
         BaseLoader.__init__(self, *args, **kw)
 
-    def update_datasets(self, directory=None, datasets=None, filter=None):
-        if directory is None:
-            directory = self.input_source
+    def update_datasets(self, input_source=None, datasets=None, filter=None):
+        if input_source is None:
+            input_source = self.input_source
         if datasets is None:
             datasets = self.get_full_datasets()
 
         if filter is None:
             filter = self._filter
-        for directory_entry in os.walk(directory, followlinks=True):
+        for directory_entry in os.walk(input_source, followlinks=True):
             directory_name = directory_entry[0]
             directory_members = directory_entry[2]
             for file_name in directory_members:
@@ -371,4 +395,4 @@ class DatasetGenerator(object):
                 else:
                     component_src = rasterio.open(local_component_path)
                 new_components[component_name] = component_src
-        return (entry_name, new_components)
+        return (entry_name  , new_components)

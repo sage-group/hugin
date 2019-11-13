@@ -26,7 +26,9 @@ Currently Hugin builds on top of the Keras machine learning library but it also 
 Indices and Tables
 ==================
 
-
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
 
 
 .. _ML4EO: http://sage.ieat.ro/projects/ML4EO/
