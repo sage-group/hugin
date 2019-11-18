@@ -1,0 +1,66 @@
+configuration:
+  model_path: "/home/alex/experiments/{name}"
+data_source: !!python/object/apply:hugin.io.FileSystemLoader
+  kwds:
+    data_pattern: '(top)_(?P<city>[A-Za-z]+)_(?P<cm>[0-9]+)_(?P<area>[0-9]+)_(?P<type>[A-Za-z]+)\.tif$'
+    id_format: '{cm}_{area}'
+    type_format: '{type}'
+    input_source: '/mnt/ISPRS/training/'
+    persist_file: '/tmp/hugin-isprs-cache.yaml'
+    validation_percent: 0.2
+    randomise: True
+
+trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
+  kwds:
+    name: isprs_model_example
+    stride_size: 100
+    window_size: [256, 256]
+    model: !!python/object/apply:hugin.engine.keras.KerasModel
+      kwds:
+        name: keras_model
+        model_path: "/home/alex/experiments/{name}"
+        model_builder: hugin.models.unet.unetv14:unet_v14
+        batch_size: 20
+        epochs: 2
+        metrics:
+          - accuracy
+          - !!python/name:hugin.tools.utils.dice_coef
+          - !!python/name:hugin.tools.utils.jaccard_coef
+        loss: categorical_crossentropy
+        checkpoint:
+          monitor: val_loss
+        num_gpus: 1
+        optimizer: !!python/object/apply:keras.optimizers.Adam
+          kwds:
+            lr: !!float 0.0001
+            beta_1: !!float 0.9
+            beta_2: !!float 0.999
+            epsilon: !!float 1e-8
+        callbacks:
+          - !!python/object/apply:keras.callbacks.EarlyStopping
+            kwds:
+              monitor: 'val_dice_coef'
+              min_delta: 0
+              patience: 40
+              verbose: 1
+              mode: 'auto'
+              baseline: None
+              restore_best_weights: False
+    mapping:
+      inputs:
+        input_1:
+          primary: True
+          channels:
+            - [ "RGB", 1 ]
+            - [ "RGB", 2 ]
+            - [ "RGB", 3 ]
+      target:
+        output_1:
+          window_shape: [256, 256]
+          stride: 100
+          channels:
+            - [ "GTI", 1 ]
+          preprocessing:
+            - !!python/object/apply:hugin.io.loader.BinaryCategoricalConverter
+              kwds:
+                do_categorical: False
