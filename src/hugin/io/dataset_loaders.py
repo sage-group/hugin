@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from hugin.engine.core import RasterGenerator
 
 __license__ = \
     """Copyright 2019 West University of Timisoara
@@ -33,6 +32,9 @@ from rasterio.io import DatasetReader
 from tempfile import NamedTemporaryFile, mkdtemp
 
 from hugin.tools.IOUtils import IOUtils
+from rasterio import RasterioIOError
+from hugin.engine.core import RasterGenerator
+import geopandas as gp
 
 import yaml
 
@@ -411,14 +413,14 @@ class DatasetGenerator(object):
                             f = IOUtils.open_file(dataset_path, "wb")
                             f.write(data)
                             f.close()
-                        component_src = rasterio.open(dataset_path)
+                        component_src = self.get_component_file_descriptor(dataset_path)
                     else:
                         with NamedTemporaryFile() as tmpfile:
                             tmpfile.write(data)
                             tmpfile.flush()
-                            component_src = rasterio.open(tmpfile.name)
+                            component_src = self.get_component_file_descriptor(tmpfile.name)
                 else:
-                    component_src = rasterio.open(local_component_path)
+                    component_src = self.get_component_file_descriptor(local_component_path)
                 new_components[component_name] = component_src
 
         # Trigger the generation of the dynamic components
@@ -428,4 +430,8 @@ class DatasetGenerator(object):
 
         return entry_name, new_components
 
-
+    def get_component_file_descriptor(self, file_path):
+        try:
+            return rasterio.open(file_path)
+        except RasterioIOError:
+            return gp.read_file(file_path)
