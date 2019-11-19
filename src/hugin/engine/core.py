@@ -273,3 +273,36 @@ class IdentityModel(RasterModel):
 
 def identity_metric(prediction, gti):
     return 1
+
+class RasterGenerator(object):
+    """
+    Base class used by handlers generating new data components
+    """
+    def __call__(self, scene_components):
+        """
+        Generate a new scene component
+        Args:
+            scene_components: existing scene components
+
+        Returns: Should return an rasterio dataset
+
+        """
+        raise NotImplementedError()
+
+
+class CloneComponentGenerator(RasterGenerator):
+    """
+    Generator generating an clone of an existing component
+    """
+    def __init__(self, base_component):
+        """
+
+        Args:
+            base_component: the component we should use for detecting the size, etc
+        """
+        self._base_component = base_component
+
+    def __call__(self, scene_components):
+        from rasterio.io import MemoryFile
+        base_component = scene_components[self._base_component]
+        return MemoryFile(base_component)

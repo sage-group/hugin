@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from hugin.engine.core import RasterGenerator
 
 __license__ = \
     """Copyright 2019 West University of Timisoara
@@ -62,7 +63,8 @@ class BaseLoader(object):
                  prepend_path="",
                  rasterio_env={},
                  cache_io=False,
-                 persist_file=None):
+                 persist_file=None,
+                 dynamic_types={}):
         """
 
         Args:
@@ -105,6 +107,7 @@ class BaseLoader(object):
 
         self._datasets = OrderedDict()
         self._validation_datasets = OrderedDict()
+        self._dynamic_types = dynamic_types
 
         self._filter = filter
 
@@ -115,19 +118,38 @@ class BaseLoader(object):
                 self._evaluation_list = data['evaluation']
                 self._train_list = data['training']
         else:
-            self.update_datasets()
-            if self._validation_source:
-                self.update_datasets(directory=self._validation_source, datasets=self._validation_datasets)
-            self.__update_split()
-            # self._evaluation_list, self._train_list
-            if self.persist_file:
-                persist_data = {
-                    'evaluation': self._evaluation_list,
-                    'training': self._train_list
-                }
-                log.info("Persisting datasets to: %s", self.persist_file)
-                with open(self.persist_file, "w") as f:
-                    yaml.dump(persist_data, f, Dumper=Dumper)
+            self.scan_datasets()
+
+
+    def scan_datasets(self):
+        self._datasets.clear()
+        self.update_datasets()
+        if self._validation_source:
+            self.update_datasets(directory=self._validation_source, datasets=self._validation_datasets)
+        self.__update_split()
+        # self._evaluation_list, self._train_list
+        if self.persist_file:
+            persist_data = {
+                'evaluation': self._evaluation_list,
+                'training': self._train_list
+            }
+            log.info("Persisting datasets to: %s", self.persist_file)
+            with open(self.persist_file, "w") as f:
+                yaml.dump(persist_data, f, Dumper=Dumper)
+
+        # Add dynamic types
+        self._update_dynamic_types()
+
+    def _update_dynamic_types(self):
+        """
+        Updates all datasets with dynamic entries
+        Returns:
+
+        """
+        for scene_id, scene_data in self._datasets.items():
+            for type_name, type_handler in self._dynamic_types.items():
+                scene_data[type_name] = type_handler
+
 
     def __len__(self) -> int:
         """Computes the number of datasets
@@ -164,9 +186,6 @@ class BaseLoader(object):
     def get_validation_datasets(self):
         return self._evaluation_list
 
-    def scan_datasets(self):
-        raise NotImplementedError()
-
     def get_dataset_id(self, components):
         return self._id_format.format(**components)
 
@@ -202,6 +221,9 @@ class BaseLoader(object):
             raise KeyError("Already registered: %s %s %s" % (dataset_id, dataset_type, dataset_path))
         components[dataset_type] = dataset_path
         return dataset_id
+
+    def update_datasets(self, *args, **kwargs):
+        raise NotImplementedError()
 
     def get_dataset_loaders(self):
         return self.build_dataset_loaders(self.get_training_datasets(),
@@ -354,6 +376,9 @@ class DatasetGenerator(object):
         cache_data = self._cache_data
         use_tensorflow_io = False
         for component_name, component_path in entry_components.items():
+            if isinstance(component_path, RasterGenerator):
+                new_components[component_name] = component_path
+                continue
             if isinstance(component_path, DatasetReader):
                 component_path = component_path.name
             local_component_path = component_path
@@ -395,4 +420,12 @@ class DatasetGenerator(object):
                 else:
                     component_src = rasterio.open(local_component_path)
                 new_components[component_name] = component_src
-        return (entry_name  , new_components)
+
+        # Trigger the generation of the dynamic components
+        for component_name, component_path in new_components.items():
+            if isinstance(component_path, RasterGenerator):
+                new_components[component_name] = component_path(new_components)
+
+        return entry_name, new_components
+
+
