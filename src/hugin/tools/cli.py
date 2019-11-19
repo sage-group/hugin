@@ -55,13 +55,8 @@ def main():
 
     args = parser.parse_args()
 
-    if args.config is not None:
-        config = yaml.load(args.config, Loader=Loader)
-    else:
-        config = {}
-
     if hasattr(args, "func"):
-        args.func(config, args)
+        args.func(args)
 
 
 if __name__ == "__main__":
