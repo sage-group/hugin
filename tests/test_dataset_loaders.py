@@ -3,6 +3,8 @@ import glob
 import pytest
 
 from rasterio.io import DatasetReader
+
+from hugin.engine.core import CloneComponentGenerator
 from hugin.io import FileLoader, FileSystemLoader, DataGenerator
 from tempfile import NamedTemporaryFile
 
@@ -28,6 +30,19 @@ class TestLoaders(object):
 
     def teardown(self):
         self.tempf.close()
+
+    def test_dynamic_types(self):
+        kwargs = self.base_kwargs.copy()
+        kwargs['input_source'] = self.tempf.name
+        kwargs['dynamic_types'] = {}
+        kwargs['dynamic_types']['FOO'] = CloneComponentGenerator(base_component='1')
+        fs1 = FileLoader(**kwargs)
+        datasets = fs1.get_training_datasets()
+        assert len(fs1) == 3
+        for dataset_id, dataset in datasets:
+            assert 'FOO' in dataset
+            handler = dataset['FOO']
+            assert callable(handler)
 
     def test_detected_from_input_file(self):
         kwargs = self.base_kwargs.copy()
