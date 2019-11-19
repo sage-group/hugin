@@ -11,8 +11,8 @@ except ImportError:
 log = logging.getLogger(__name__)
 
 
-def predict_handler(config, args):
-    ensemble_config_file = args.ensemble_config
+def predict_handler(args):
+    ensemble_config_file = args.config
     input_dir = args.input_dir
     output_dir = args.output_dir
 
