@@ -8,9 +8,11 @@ from hugin.engine.core import CloneComponentGenerator
 from hugin.io import FileLoader, FileSystemLoader, DataGenerator
 from tempfile import NamedTemporaryFile
 
+from hugin.preprocessing.rasterize import GroundTruthComponentGenerator
 from tests import runningInCI
 
 basedir = os.path.join(os.path.dirname(__file__), "data", "scanner_examples")
+
 
 class TestLoaders(object):
     def setup(self):
@@ -42,6 +44,26 @@ class TestLoaders(object):
         for dataset_id, dataset in datasets:
             assert 'FOO' in dataset
             handler = dataset['FOO']
+            assert callable(handler)
+
+    def test_on_the_fly_gti_generator(self):
+        kwargs = self.base_kwargs.copy()
+        kwargs['input_source'] = self.tempf.name
+        kwargs['data_pattern'] = r"(?P<_>[0-9A-Za-z_]+)_AOI_(?P<location>\d+(_[A-Za-z0-9]+)+)_(?P<type>[A-Za-z]+)_(?P<idx>[a-z0-9]+).tif"
+        kwargs['id_format'] = "AOI_{location}_{idx}"
+        kwargs['type_format'] = "{type}"
+        kwargs['input_source'] = '/home/alex/spacenet_data/'
+        kwargs['dynamic_types'] = {}
+        kwargs['dynamic_types']['GTI'] = GroundTruthComponentGenerator(base_component='PAN',
+                                                                       shape_input='/home/alex/spacenet_data/shape.geojson',
+                                                                       growth_factor=0.00002)
+        loader = FileSystemLoader(**kwargs)
+        datasets = loader.get_full_datasets()
+
+        assert len(datasets) == 3
+        for dataset_id, dataset in datasets.items():
+            assert 'GTI' in dataset
+            handler = dataset['GTI']
             assert callable(handler)
 
     def test_detected_from_input_file(self):
