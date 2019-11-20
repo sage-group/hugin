@@ -25,7 +25,7 @@ predictor: !!python/object/apply:hugin.engine.scene.RasterScenePredictor
             - [ "RGB", 3 ]
     prediction_merger: !!python/name:hugin.engine.core.NullMerger
 
-output: !!python/object/apply:hugin.engine.scene.MultipleFormatExporter
+output: !!python/object/apply:hugin.engine.scene.RasterIOSceneExporter
   kwds:
-    destination: "/tmp/isprs_predictions/"
-    metric_destination: "/tmp/isprs_predictions/"
+     destination: "/home/alex/postdam_predictions"
+     filename_pattern: '{scene_id}.tif'
