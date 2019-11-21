@@ -1,13 +1,18 @@
 import pytest
-from tempfile import TemporaryDirectory
-from PIL import Image,ImageDraw
+
+import os
+import json
+import random
 import numpy as np
 import rasterio
+import rasterio.features
+import rasterio.warp
+
+from tempfile import TemporaryDirectory
+from PIL import Image, ImageDraw
 from rasterio.transform import from_origin
 from hugin.io import FileSystemLoader
-import os
 
-import random
 
 def generate_filesystem_loader(width=2131, height=1979, size=35, num_images=10):
     tempdir = TemporaryDirectory("-hugin")
@@ -15,6 +20,7 @@ def generate_filesystem_loader(width=2131, height=1979, size=35, num_images=10):
     random.seed(42)
 
     match_color = "red"
+    coords = (21.2086, 45.7488)
 
     for imgidx in range(0, num_images):
         data = np.zeros((height, width, 3), dtype=np.uint8)
@@ -50,9 +56,11 @@ def generate_filesystem_loader(width=2131, height=1979, size=35, num_images=10):
 
         fname = os.path.join(tempdir_name, "TEST_RGB_{}.tiff".format(imgidx+1))
         mname = os.path.join(tempdir_name, "TEST_GTI_{}.tiff".format(imgidx+1))
+        gname = os.path.join(tempdir_name, "TEST_GT_{}.geojson".format(imgidx+1))
 
         res = 0.5
-        transform = from_origin(21.2086, 45.7488, res, res)
+        transform = from_origin(coords[0], coords[1], res, res)
+        coords = (coords[0] + (res * width), coords[1])
         rgb_image = rasterio.open(
             fname,
             'w',
@@ -80,17 +88,29 @@ def generate_filesystem_loader(width=2131, height=1979, size=35, num_images=10):
         data = np.array(im.getdata()).reshape(data.shape).astype(np.uint8)
         new_data_mask = np.array(mask.getdata())
         data_mask = new_data_mask.reshape(data_mask.shape)
+        data_mask = data_mask > 0
         data_mask = data_mask.astype(np.uint8)
         for i in range(0, data.shape[-1]):
             rgb_image.write(data[:,:,i], i+1)
         gti_image.write(data_mask, 1)
+
         gti_image.close()
         rgb_image.close()
 
+        with rasterio.open(mname) as gti:
+            src = gti.read()
+            mask = src == 1
+            features_col = {'type': 'FeatureCollection', 'features': []}
+            for geom, _ in rasterio.features.shapes(src, mask=mask, transform=transform):
+                features_col['features'].append({'geometry': geom})
+
+            with open(gname, 'w') as dst:
+                dst.write(json.dumps(features_col))
+
     base_kwargs = {
-        'data_pattern': r"(?P<name>[0-9A-Za-z]+)_(?P<SECOND>[A-Za-z0-9]+)_(?P<THIRD>[A-Za-z0-9]+)\.tiff$",
-        'type_format': "{SECOND}",
+        'data_pattern': r"(?P<name>[0-9A-Za-z]+)_(?P<SECOND>[A-Za-z0-9]+)_(?P<THIRD>[A-Za-z0-9]+)\.(tiff|geojson)$",
         'id_format': "{name}_{THIRD}",
+        'type_format': "{SECOND}",
         'input_source': tempdir_name,
         'validation_percent': 0.2
     }

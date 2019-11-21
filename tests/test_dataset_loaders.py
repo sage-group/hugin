@@ -8,6 +8,7 @@ from hugin.engine.core import CloneComponentGenerator
 from hugin.io import FileLoader, FileSystemLoader, DataGenerator
 from tempfile import NamedTemporaryFile
 
+from tests.conftest import generate_filesystem_loader
 from hugin.preprocessing.rasterize import GroundTruthComponentGenerator
 from tests import runningInCI
 
@@ -46,7 +47,7 @@ class TestLoaders(object):
             handler = dataset['FOO']
             assert callable(handler)
 
-    def test_on_the_fly_gti_generator(self):
+    def test_on_the_fly_gti_generator_singleinput(self):
         kwargs = self.base_kwargs.copy()
         kwargs['input_source'] = self.tempf.name
         kwargs['data_pattern'] = r"(?P<_>[0-9A-Za-z_]+)_AOI_(?P<location>\d+(_[A-Za-z0-9]+)+)_(?P<type>[A-Za-z]+)_(?P<idx>[a-z0-9]+).tif"
@@ -65,6 +66,27 @@ class TestLoaders(object):
             assert 'GTI' in dataset
             handler = dataset['GTI']
             assert callable(handler)
+
+    def test_on_the_fly_gti_generator_multipleinput(self, generated_filesystem_loader):
+        #dataset_loader, validation_loader = generated_filesystem_loader.get_dataset_loaders()
+        kwargs = self.base_kwargs.copy()
+        kwargs['data_pattern'] = r"(?P<name>[0-9A-Za-z]+)_(?P<SECOND>[A-Za-z0-9]+)_(?P<THIRD>[A-Za-z0-9]+)\.(tiff|geojson)"
+        kwargs['id_format'] = "{name}-{THIRD}"
+        kwargs['type_format'] = "{SECOND}"
+        kwargs['input_source'] = '/home/alex/tmp6ecx__sv-hugin/'
+        kwargs['dynamic_types'] = {}
+        kwargs['dynamic_types']['GTI'] = GroundTruthComponentGenerator(base_component='RGB',
+                                                                       shape_input='GT')
+
+        loader = FileSystemLoader(**kwargs)
+        datasets = loader.get_full_datasets()
+
+        # assert len(datasets) == 10
+        for dataset_id, dataset in datasets.items():
+            assert 'GTI' in dataset
+            handler = dataset['GTI']
+            assert callable(handler)
+            handler(dataset)
 
     def test_detected_from_input_file(self):
         kwargs = self.base_kwargs.copy()
