@@ -53,9 +53,9 @@ class RasterFromShapesGenerator(ComponentGenerator):
         gt_component = _shape_input
 
         shapes = gt_component['geometry']
-        gti_component = np.zeros(base_raster.shape, dtype=np.uint16)
         profile = base_raster.profile
         profile.update(count=1, nodata=0)
+        gti_component = np.zeros(base_raster.shape, dtype=profile['dtype'])
 
         if not shapes.empty:
             if self._growth_factor != 0:
@@ -70,7 +70,7 @@ class RasterFromShapesGenerator(ComponentGenerator):
 
         with tempfile.NamedTemporaryFile() as tmp_file:
             with rasterio.open(tmp_file.name, 'w', **profile) as dst:
-                dst.write(gti_component.astype(np.uint8), 1)
+                dst.write(gti_component, 1)
             gti_file = rasterio.open(tmp_file.name, 'r', **profile)
 
         return gti_file
