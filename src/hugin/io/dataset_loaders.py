@@ -16,27 +16,25 @@ __license__ = \
        limitations under the License.
     """
 
+import atexit
 import logging
-from collections import OrderedDict
-
 import os
 import random
 import re
-
+from collections import OrderedDict
+from hashlib import sha224
+from tempfile import NamedTemporaryFile, mkdtemp
 from urllib.parse import urlparse
 
-import atexit
-import rasterio
-from hashlib import sha224
-from rasterio.io import DatasetReader
-from tempfile import NamedTemporaryFile, mkdtemp
-
-from hugin.tools.IOUtils import IOUtils
-from rasterio import RasterioIOError
-from hugin.engine.core import RasterGenerator
 import geopandas as gp
-
+import rasterio
 import yaml
+from geopandas import GeoDataFrame
+from rasterio import RasterioIOError, MemoryFile
+from rasterio.io import DatasetReader
+
+from hugin.engine.core import RasterGenerator
+from hugin.tools.IOUtils import IOUtils
 
 try:
     from yaml import CLoader as Loader
@@ -377,12 +375,19 @@ class DatasetGenerator(object):
         new_components = {}
         cache_data = self._cache_data
         use_tensorflow_io = False
-        for component_name, component_path in entry_components.items():
-            if isinstance(component_path, RasterGenerator):
-                new_components[component_name] = component_path
+        for component_name, component_path_entry in entry_components.items():
+            if isinstance(component_path_entry, (RasterGenerator, GeoDataFrame, MemoryFile)):
+                new_components[component_name] = component_path_entry
                 continue
-            if isinstance(component_path, DatasetReader):
-                component_path = component_path.name
+            elif isinstance(component_path_entry, GeoDataFrame):
+                new_components[component_name] = component_path_entry
+                continue
+            elif isinstance(component_path_entry, DatasetReader):
+                component_path = component_path_entry.name
+            elif isinstance(component_path_entry, str):
+                component_path = component_path_entry
+            else:
+                raise NotImplementedError("Unsupported type for component value")
             local_component_path = component_path
             url_components = urlparse(component_path)
             if not url_components.scheme:

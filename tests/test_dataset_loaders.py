@@ -2,14 +2,14 @@ import os
 import glob
 import pytest
 
-from rasterio.io import DatasetReader
+import rasterio
+from rasterio import DatasetReader
 
 from hugin.engine.core import CloneComponentGenerator
-from hugin.io import FileLoader, FileSystemLoader, DataGenerator
+from hugin.io import FileLoader, FileSystemLoader, DataGenerator, DatasetGenerator
 from tempfile import NamedTemporaryFile
 
-from tests.conftest import generate_filesystem_loader
-from hugin.preprocessing.rasterize import GroundTruthComponentGenerator
+from hugin.preprocessing.rasterize import RasterFromShapesGenerator
 from tests import runningInCI
 
 basedir = os.path.join(os.path.dirname(__file__), "data", "scanner_examples")
@@ -47,46 +47,26 @@ class TestLoaders(object):
             handler = dataset['FOO']
             assert callable(handler)
 
-    def test_on_the_fly_gti_generator_singleinput(self):
-        kwargs = self.base_kwargs.copy()
-        kwargs['input_source'] = self.tempf.name
-        kwargs['data_pattern'] = r"(?P<_>[0-9A-Za-z_]+)_AOI_(?P<location>\d+(_[A-Za-z0-9]+)+)_(?P<type>[A-Za-z]+)_(?P<idx>[a-z0-9]+).tif"
-        kwargs['id_format'] = "AOI_{location}_{idx}"
-        kwargs['type_format'] = "{type}"
-        kwargs['input_source'] = '/home/alex/spacenet_data/'
-        kwargs['dynamic_types'] = {}
-        kwargs['dynamic_types']['GTI'] = GroundTruthComponentGenerator(base_component='PAN',
-                                                                       shape_input='/home/alex/spacenet_data/shape.geojson',
-                                                                       growth_factor=0.00002)
-        loader = FileSystemLoader(**kwargs)
-        datasets = loader.get_full_datasets()
+    @pytest.mark.parametrize('generated_filesystem_loader', [False], indirect=True)
+    def test_on_the_fly_gti_generator_singleinput(self, generated_filesystem_loader):
+        dataset_loader, validation_loader = generated_filesystem_loader.get_dataset_loaders()
+        datasets = DatasetGenerator(dataset_loader)
 
-        assert len(datasets) == 3
-        for dataset_id, dataset in datasets.items():
-            assert 'GTI' in dataset
-            handler = dataset['GTI']
-            assert callable(handler)
+        assert len(dataset_loader) == 8
+        assert len(validation_loader) == 2
+        for scene_id, scene in datasets:
+            scene = scene['GENERATED_GROUNDTRUTH']
+            assert(isinstance(scene, rasterio.io.DatasetReader))
 
     def test_on_the_fly_gti_generator_multipleinput(self, generated_filesystem_loader):
-        #dataset_loader, validation_loader = generated_filesystem_loader.get_dataset_loaders()
-        kwargs = self.base_kwargs.copy()
-        kwargs['data_pattern'] = r"(?P<name>[0-9A-Za-z]+)_(?P<SECOND>[A-Za-z0-9]+)_(?P<THIRD>[A-Za-z0-9]+)\.(tiff|geojson)"
-        kwargs['id_format'] = "{name}-{THIRD}"
-        kwargs['type_format'] = "{SECOND}"
-        kwargs['input_source'] = '/home/alex/tmp6ecx__sv-hugin/'
-        kwargs['dynamic_types'] = {}
-        kwargs['dynamic_types']['GTI'] = GroundTruthComponentGenerator(base_component='RGB',
-                                                                       shape_input='GT')
+        dataset_loader, validation_loader = generated_filesystem_loader.get_dataset_loaders()
+        datasets = DatasetGenerator(dataset_loader)
 
-        loader = FileSystemLoader(**kwargs)
-        datasets = loader.get_full_datasets()
-
-        # assert len(datasets) == 10
-        for dataset_id, dataset in datasets.items():
-            assert 'GTI' in dataset
-            handler = dataset['GTI']
-            assert callable(handler)
-            handler(dataset)
+        assert len(dataset_loader) == 8
+        assert len(validation_loader) == 2
+        for scene_id, scene in datasets:
+            scene = scene['GENERATED_GROUNDTRUTH']
+            assert(isinstance(scene, rasterio.io.DatasetReader))
 
     def test_detected_from_input_file(self):
         kwargs = self.base_kwargs.copy()

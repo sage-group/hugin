@@ -5,8 +5,6 @@ from tempfile import TemporaryDirectory
 from hugin.engine.core import SkLearnStandardizer
 from hugin.engine.scene import RasterSceneTrainer
 from hugin.io.loader import BinaryCategoricalConverter
-from tests.conftest import generate_filesystem_loader
-
 
 @pytest.fixture
 def mapping():
