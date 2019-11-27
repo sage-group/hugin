@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from fiona.errors import DriverError
 
 __license__ = \
     """Copyright 2019 West University of Timisoara
@@ -439,4 +440,7 @@ class DatasetGenerator(object):
         try:
             return rasterio.open(file_path)
         except RasterioIOError:
-            return gp.read_file(file_path)
+            try:
+                return gp.read_file(file_path)
+            except DriverError as e:
+                return gp.GeoDataFrame()
