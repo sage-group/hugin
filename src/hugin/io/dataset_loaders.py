@@ -443,4 +443,6 @@ class DatasetGenerator(object):
             try:
                 return gp.read_file(file_path)
             except DriverError as e:
-                return gp.GeoDataFrame()
+                df = gp.GeoDataFrame()
+                df['geometry'] = ''
+                return df
