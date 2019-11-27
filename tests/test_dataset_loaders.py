@@ -56,7 +56,7 @@ class TestLoaders(object):
         assert len(validation_loader) == 2
         for scene_id, scene in datasets:
             scene = scene['GENERATED_GROUNDTRUTH']
-            assert(isinstance(scene, rasterio.io.MemoryFile))
+            assert(isinstance(scene, rasterio.io.DatasetReader))
 
     def test_on_the_fly_gti_generator_multipleinput(self, generated_filesystem_loader):
         dataset_loader, validation_loader = generated_filesystem_loader.get_dataset_loaders()
@@ -66,7 +66,7 @@ class TestLoaders(object):
         assert len(validation_loader) == 2
         for scene_id, scene in datasets:
             scene = scene['GENERATED_GROUNDTRUTH']
-            assert(isinstance(scene, rasterio.io.MemoryFile))
+            assert(isinstance(scene, rasterio.io.DatasetReader))
 
     def test_detected_from_input_file(self):
         kwargs = self.base_kwargs.copy()

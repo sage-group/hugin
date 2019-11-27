@@ -129,9 +129,9 @@ class GenerateFileSystemLoader():
                                                                                                shape_input='GT',
                                                                                                growth_factor=0.00002)}
         else:
-            base_kwargs['dynamic_types'] = {'GENERATED_GROUNDTRUTH' : RasterFromShapesGenerator(base_component='RGB',
-                                                                                                shape_input=sgname,
-                                                                                                growth_factor=0.00002)}
+            base_kwargs['dynamic_types'] = {'GENERATED_GROUNDTRUTH': RasterFromShapesGenerator(base_component='RGB',
+                                                                                               shape_input=sgname,
+                                                                                               growth_factor=0.00002)}
 
         loader = FileSystemLoader(**base_kwargs)
         loader.__temp_input_directory = tempdir

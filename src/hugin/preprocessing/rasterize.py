@@ -1,3 +1,5 @@
+import os
+import tempfile
 import numpy as np
 import geopandas as gpd
 import rasterio as rio
@@ -66,7 +68,12 @@ class RasterFromShapesGenerator(ComponentGenerator):
                                         transform=base_raster.transform,
                                         out=gti_component)
 
-        return rio.io.MemoryFile(bytes(gti_component))
+        with tempfile.NamedTemporaryFile() as tmp_file:
+            with rasterio.open(tmp_file.name, 'w', **profile) as dst:
+                dst.write(gti_component.astype(np.uint8), 1)
+            gti_file = rasterio.open(tmp_file.name, 'r', **profile)
+
+        return gti_file
 
     def __call__(self, scene_components):
         return self._create_component(scene_components)
