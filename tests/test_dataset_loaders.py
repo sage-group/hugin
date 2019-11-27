@@ -2,13 +2,18 @@ import os
 import glob
 import pytest
 
-from rasterio.io import DatasetReader
-from hugin.io import FileLoader, FileSystemLoader, DataGenerator
+import rasterio
+from rasterio import DatasetReader
+
+from hugin.engine.core import CloneComponentGenerator
+from hugin.io import FileLoader, FileSystemLoader, DataGenerator, DatasetGenerator
 from tempfile import NamedTemporaryFile
 
+from hugin.preprocessing.rasterize import RasterFromShapesGenerator
 from tests import runningInCI
 
 basedir = os.path.join(os.path.dirname(__file__), "data", "scanner_examples")
+
 
 class TestLoaders(object):
     def setup(self):
@@ -28,6 +33,40 @@ class TestLoaders(object):
 
     def teardown(self):
         self.tempf.close()
+
+    def test_dynamic_types(self):
+        kwargs = self.base_kwargs.copy()
+        kwargs['input_source'] = self.tempf.name
+        kwargs['dynamic_types'] = {}
+        kwargs['dynamic_types']['FOO'] = CloneComponentGenerator(base_component='1')
+        fs1 = FileLoader(**kwargs)
+        datasets = fs1.get_training_datasets()
+        assert len(fs1) == 3
+        for dataset_id, dataset in datasets:
+            assert 'FOO' in dataset
+            handler = dataset['FOO']
+            assert callable(handler)
+
+    @pytest.mark.parametrize('generated_filesystem_loader', [False], indirect=True)
+    def test_on_the_fly_gti_generator_singleinput(self, generated_filesystem_loader):
+        dataset_loader, validation_loader = generated_filesystem_loader.get_dataset_loaders()
+        datasets = DatasetGenerator(dataset_loader)
+
+        assert len(dataset_loader) == 8
+        assert len(validation_loader) == 2
+        for scene_id, scene in datasets:
+            scene = scene['GENERATED_GROUNDTRUTH']
+            assert(isinstance(scene, rasterio.io.DatasetReader))
+
+    def test_on_the_fly_gti_generator_multipleinput(self, generated_filesystem_loader):
+        dataset_loader, validation_loader = generated_filesystem_loader.get_dataset_loaders()
+        datasets = DatasetGenerator(dataset_loader)
+
+        assert len(dataset_loader) == 8
+        assert len(validation_loader) == 2
+        for scene_id, scene in datasets:
+            scene = scene['GENERATED_GROUNDTRUTH']
+            assert(isinstance(scene, rasterio.io.DatasetReader))
 
     def test_detected_from_input_file(self):
         kwargs = self.base_kwargs.copy()

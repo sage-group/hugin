@@ -16,24 +16,25 @@ __license__ = \
        limitations under the License.
     """
 
+import atexit
 import logging
-from collections import OrderedDict
-
 import os
 import random
 import re
-
+from collections import OrderedDict
+from hashlib import sha224
+from tempfile import NamedTemporaryFile, mkdtemp
 from urllib.parse import urlparse
 
-import atexit
+import geopandas as gp
 import rasterio
-from hashlib import sha224
-from rasterio.io import DatasetReader
-from tempfile import NamedTemporaryFile, mkdtemp
-
-from hugin.tools.IOUtils import IOUtils
-
 import yaml
+from geopandas import GeoDataFrame
+from rasterio import RasterioIOError, MemoryFile
+from rasterio.io import DatasetReader
+
+from hugin.engine.core import RasterGenerator
+from hugin.tools.IOUtils import IOUtils
 
 try:
     from yaml import CLoader as Loader
@@ -62,7 +63,8 @@ class BaseLoader(object):
                  prepend_path="",
                  rasterio_env={},
                  cache_io=False,
-                 persist_file=None):
+                 persist_file=None,
+                 dynamic_types={}):
         """
 
         Args:
@@ -105,6 +107,7 @@ class BaseLoader(object):
 
         self._datasets = OrderedDict()
         self._validation_datasets = OrderedDict()
+        self._dynamic_types = dynamic_types
 
         self._filter = filter
 
@@ -115,19 +118,38 @@ class BaseLoader(object):
                 self._evaluation_list = data['evaluation']
                 self._train_list = data['training']
         else:
-            self.update_datasets()
-            if self._validation_source:
-                self.update_datasets(directory=self._validation_source, datasets=self._validation_datasets)
-            self.__update_split()
-            # self._evaluation_list, self._train_list
-            if self.persist_file:
-                persist_data = {
-                    'evaluation': self._evaluation_list,
-                    'training': self._train_list
-                }
-                log.info("Persisting datasets to: %s", self.persist_file)
-                with open(self.persist_file, "w") as f:
-                    yaml.dump(persist_data, f, Dumper=Dumper)
+            self.scan_datasets()
+
+
+    def scan_datasets(self):
+        self._datasets.clear()
+        self.update_datasets()
+        if self._validation_source:
+            self.update_datasets(directory=self._validation_source, datasets=self._validation_datasets)
+        self.__update_split()
+        # self._evaluation_list, self._train_list
+        if self.persist_file:
+            persist_data = {
+                'evaluation': self._evaluation_list,
+                'training': self._train_list
+            }
+            log.info("Persisting datasets to: %s", self.persist_file)
+            with open(self.persist_file, "w") as f:
+                yaml.dump(persist_data, f, Dumper=Dumper)
+
+        # Add dynamic types
+        self._update_dynamic_types()
+
+    def _update_dynamic_types(self):
+        """
+        Updates all datasets with dynamic entries
+        Returns:
+
+        """
+        for scene_id, scene_data in self._datasets.items():
+            for type_name, type_handler in self._dynamic_types.items():
+                scene_data[type_name] = type_handler
+
 
     def __len__(self) -> int:
         """Computes the number of datasets
@@ -164,9 +186,6 @@ class BaseLoader(object):
     def get_validation_datasets(self):
         return self._evaluation_list
 
-    def scan_datasets(self):
-        raise NotImplementedError()
-
     def get_dataset_id(self, components):
         return self._id_format.format(**components)
 
@@ -202,6 +221,9 @@ class BaseLoader(object):
             raise KeyError("Already registered: %s %s %s" % (dataset_id, dataset_type, dataset_path))
         components[dataset_type] = dataset_path
         return dataset_id
+
+    def update_datasets(self, *args, **kwargs):
+        raise NotImplementedError()
 
     def get_dataset_loaders(self):
         return self.build_dataset_loaders(self.get_training_datasets(),
@@ -353,9 +375,19 @@ class DatasetGenerator(object):
         new_components = {}
         cache_data = self._cache_data
         use_tensorflow_io = False
-        for component_name, component_path in entry_components.items():
-            if isinstance(component_path, DatasetReader):
-                component_path = component_path.name
+        for component_name, component_path_entry in entry_components.items():
+            if isinstance(component_path_entry, (RasterGenerator, GeoDataFrame, MemoryFile)):
+                new_components[component_name] = component_path_entry
+                continue
+            elif isinstance(component_path_entry, GeoDataFrame):
+                new_components[component_name] = component_path_entry
+                continue
+            elif isinstance(component_path_entry, DatasetReader):
+                component_path = component_path_entry.name
+            elif isinstance(component_path_entry, str):
+                component_path = component_path_entry
+            else:
+                raise NotImplementedError("Unsupported type for component value")
             local_component_path = component_path
             url_components = urlparse(component_path)
             if not url_components.scheme:
@@ -386,13 +418,25 @@ class DatasetGenerator(object):
                             f = IOUtils.open_file(dataset_path, "wb")
                             f.write(data)
                             f.close()
-                        component_src = rasterio.open(dataset_path)
+                        component_src = self.get_component_file_descriptor(dataset_path)
                     else:
                         with NamedTemporaryFile() as tmpfile:
                             tmpfile.write(data)
                             tmpfile.flush()
-                            component_src = rasterio.open(tmpfile.name)
+                            component_src = self.get_component_file_descriptor(tmpfile.name)
                 else:
-                    component_src = rasterio.open(local_component_path)
+                    component_src = self.get_component_file_descriptor(local_component_path)
                 new_components[component_name] = component_src
-        return (entry_name  , new_components)
+
+        # Trigger the generation of the dynamic components
+        for component_name, component_path in new_components.items():
+            if isinstance(component_path, RasterGenerator):
+                new_components[component_name] = component_path(new_components)
+
+        return entry_name, new_components
+
+    def get_component_file_descriptor(self, file_path):
+        try:
+            return rasterio.open(file_path)
+        except RasterioIOError:
+            return gp.read_file(file_path)

@@ -224,7 +224,7 @@ A complete example configuration is depicted bellow:
       randomise: True
       persist_file: "/storage/spacenet5/split1.yaml"
       input_source: "/storage/spacenet5"
-   trainer: !!python/object/apply:hugin.infer.scene.RasterSceneTrainer
+   trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
             kwds:
               name: raster_keras_trainerv2
               stride_size: 100
@@ -420,3 +420,6 @@ Mapping
 
 The data mapping functionality represents one of the core features of Hugin.
 It is used by the `RasterSceneTrainer` and `RasterScenePredictor` for assembling input data that is sent to the underlying models.
+
+
+.. include:: isprs_example.rst

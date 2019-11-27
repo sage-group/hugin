@@ -10,8 +10,6 @@ from hugin.engine.core import IdentityModel, AverageMerger, NullMerger
 from hugin.engine.scene import RasterSceneTrainer, AvgEnsembleScenePredictor, RasterScenePredictor, \
     RasterIOSceneExporter
 from hugin.io.loader import BinaryCategoricalConverter
-from tests.conftest import generate_filesystem_loader
-
 
 
 #@pytest.fixture

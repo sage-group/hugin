@@ -1,0 +1,31 @@
+data_source: !!python/object/apply:hugin.io.FileSystemLoader
+  kwds:
+    data_pattern: '(top)_(?P<city>[A-Za-z]+)_(?P<cm>[0-9]+)_(?P<area>[0-9]+)_(?P<type>[A-Za-z]+)\.tif$'
+    id_format: '{cm}_{area}'
+    type_format: '{type}'
+    input_source: '/mnt/ISPRS/training/'
+
+predictor: !!python/object/apply:hugin.engine.scene.RasterScenePredictor
+  kwds:
+    name: isprs_predictor
+    model: !!python/object/apply:hugin.engine.keras.KerasModel
+      kwds:
+        name: keras_predictor
+        model_path: /storage/syno1/SpaceNet-Roads/alex-train/models/unetv14_spacenetroads_vegas_tiles_twentypercent_adam_cat_crossentropy/thor.sage.ieat.ro-tardis.hdf5
+        model_builder: hugin.models.unet.unetv14:unet_v14
+    stride_size: 256
+    window_size: [256, 256]
+    mapping:
+      inputs:
+        input_1:
+          primary: True
+          channels:
+            - [ "RGB", 1 ]
+            - [ "RGB", 2 ]
+            - [ "RGB", 3 ]
+    prediction_merger: !!python/name:hugin.engine.core.NullMerger
+
+output: !!python/object/apply:hugin.engine.scene.RasterIOSceneExporter
+  kwds:
+     destination: "/home/alex/postdam_predictions"
+     filename_pattern: '{scene_id}.tif'
