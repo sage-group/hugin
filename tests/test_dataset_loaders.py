@@ -4,12 +4,12 @@ import pytest
 
 import rasterio
 from rasterio import DatasetReader
+import numpy as np
 
 from hugin.engine.core import CloneComponentGenerator
 from hugin.io import FileLoader, FileSystemLoader, DataGenerator, DatasetGenerator
 from tempfile import NamedTemporaryFile
 
-from hugin.preprocessing.rasterize import RasterFromShapesGenerator
 from tests import runningInCI
 
 basedir = os.path.join(os.path.dirname(__file__), "data", "scanner_examples")
@@ -55,8 +55,13 @@ class TestLoaders(object):
         assert len(dataset_loader) == 8
         assert len(validation_loader) == 2
         for scene_id, scene in datasets:
-            scene = scene['GENERATED_GROUNDTRUTH']
-            assert(isinstance(scene, rasterio.io.DatasetReader))
+            gti = scene['GTI']
+            generated_gti = scene['GENERATED_GROUNDTRUTH']
+            assert(isinstance(generated_gti, rasterio.io.DatasetReader))
+            gti_data = gti.read()
+            generated_gti_data = generated_gti.read()
+
+            np.testing.assert_equal(gti_data, generated_gti_data)
 
     def test_on_the_fly_gti_generator_multipleinput(self, generated_filesystem_loader):
         dataset_loader, validation_loader = generated_filesystem_loader.get_dataset_loaders()
@@ -65,8 +70,13 @@ class TestLoaders(object):
         assert len(dataset_loader) == 8
         assert len(validation_loader) == 2
         for scene_id, scene in datasets:
-            scene = scene['GENERATED_GROUNDTRUTH']
-            assert(isinstance(scene, rasterio.io.DatasetReader))
+            gti = scene['GTI']
+            generated_gti = scene['GENERATED_GROUNDTRUTH']
+            assert(isinstance(generated_gti, rasterio.io.DatasetReader))
+            gti_data = gti.read()
+            generated_gti_data = generated_gti.read()
+
+            np.testing.assert_equal(gti_data, generated_gti_data)
 
     def test_detected_from_input_file(self):
         kwargs = self.base_kwargs.copy()
