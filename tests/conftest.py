@@ -8,6 +8,7 @@ import pytest
 import rasterio
 import rasterio.features
 import rasterio.warp
+
 from rasterio.transform import from_origin
 from skimage.draw import rectangle, circle
 
@@ -37,6 +38,9 @@ class GenerateFileSystemLoader():
         colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (128, 128, 128)]
         match_color = colors[0]
 
+        single_geojson = features_col = {'type': 'FeatureCollection', 'features': []}
+        sgname = os.path.join(tempdir_name, "single_GT.geojson")
+
         for imgidx in range(0, num_images):
             data = np.zeros((height, width, 3), dtype=np.uint8)
             data_mask = np.zeros((height, width), dtype=np.uint8)
@@ -61,12 +65,11 @@ class GenerateFileSystemLoader():
                 rr, cc = circle(startx, starty, radius, shape=data_mask.shape)
                 data[rr, cc] = color
                 if color == match_color:
-                    data_mask[rr, cc] = 255
+                    data_mask[rr, cc] = 1
 
             fname = os.path.join(tempdir_name, "TEST_RGB_{}.tiff".format(imgidx + 1))
             mname = os.path.join(tempdir_name, "TEST_GTI_{}.tiff".format(imgidx + 1))
             gname = os.path.join(tempdir_name, "TEST_GT_{}.geojson".format(imgidx + 1))
-            sgname = os.path.join(tempdir_name, "single_GT.geojson")
 
             res = 0.5
             transform = from_origin(coords[0], coords[1], res, res)
@@ -105,16 +108,18 @@ class GenerateFileSystemLoader():
 
             with rasterio.open(mname) as gti:
                 src = gti.read()
-                mask = src == 255
-                features_col = {'type': 'FeatureCollection', 'features': []}
-                for geom, _ in rasterio.features.shapes(src, mask=mask, transform=transform):
-                    features_col['features'].append({'geometry': geom})
+                src[src > 0] = 1
 
-                    with open(sgname, 'a') as dst_single_geojson:
-                        dst_single_geojson.write(json.dumps(features_col))
+                features_col = {'type': 'FeatureCollection', 'features': []}
+                for geom, _ in rasterio.features.shapes(src, mask=src, transform=transform):
+                    features_col['features'].append({'geometry': geom})
+                    single_geojson['features'].append({'geometry': geom})
 
                 with open(gname, 'w') as dst_geojson:
                     dst_geojson.write(json.dumps(features_col))
+
+        with open(sgname, 'w') as dst_geojson:
+            dst_geojson.write(json.dumps(single_geojson))
 
         base_kwargs = {
             'data_pattern': r"(?P<name>[0-9A-Za-z]+)_(?P<SECOND>[A-Za-z0-9]+)_(?P<THIRD>[A-Za-z0-9]+)\.(tiff|geojson)$",
@@ -126,12 +131,11 @@ class GenerateFileSystemLoader():
 
         if self._multi_json == True:
             base_kwargs['dynamic_types'] = {'GENERATED_GROUNDTRUTH': RasterFromShapesGenerator(base_component='RGB',
-                                                                                               shape_input='GT',
-                                                                                               growth_factor=0.00002)}
+                                                                                               shape_input='GT')}
         else:
             base_kwargs['dynamic_types'] = {'GENERATED_GROUNDTRUTH': RasterFromShapesGenerator(base_component='RGB',
-                                                                                               shape_input=sgname,
-                                                                                               growth_factor=0.00002)}
+                                                                                               shape_input=sgname)}
+
 
         loader = FileSystemLoader(**base_kwargs)
         loader.__temp_input_directory = tempdir

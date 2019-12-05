@@ -1,8 +1,6 @@
-import os
 import tempfile
 import numpy as np
 import geopandas as gpd
-import rasterio as rio
 import rasterio.features
 
 from hugin.engine.core import RasterGenerator
@@ -27,7 +25,7 @@ class RasterFromShapesGenerator(ComponentGenerator):
     """
     Generator creating ground truth components from ESRI shapefiles or geojsons
     """
-    def __init__(self, base_component, shape_input, growth_factor=0, default_value=1, all_touched=True):
+    def __init__(self, base_component, shape_input, growth_factor=0, default_value=1, all_touched=False):
         """
         Args:
             shape_input: path of a geojson or shapefile whose geometries we burn in the GTI \
