@@ -118,6 +118,12 @@ class BaseLoader(object):
                 data = yaml.load(f, Loader=Loader)
                 self._evaluation_list = data['evaluation']
                 self._train_list = data['training']
+                all_datasets = self._evaluation_list + self._train_list
+                _datasets = OrderedDict()
+                for k,v in all_datasets:
+                    _datasets[k] = v
+                self._datasets = _datasets
+                self._update_dynamic_types()
         else:
             self.scan_datasets()
 
