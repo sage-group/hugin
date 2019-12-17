@@ -67,9 +67,11 @@ class RasterFromShapesGenerator(ComponentGenerator):
                                         out=gti_component)
 
         with tempfile.NamedTemporaryFile() as tmp_file:
-            with rasterio.open(tmp_file.name, 'w', **profile) as dst:
+            allowed_profile_options = {"driver", "dtype", "nodata", "width", "height", "count", "crs", "transform"}
+            new_profile = {k:v for k,v in profile.items() if k in allowed_profile_options}
+            with rasterio.open(tmp_file.name, 'w', **new_profile) as dst:
                 dst.write(gti_component, 1)
-            gti_file = rasterio.open(tmp_file.name, 'r', **profile)
+            gti_file = rasterio.open(tmp_file.name, 'r')
 
         return gti_file
 
