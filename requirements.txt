@@ -11,6 +11,6 @@ backoff==1.8.0
 matplotlib<3.0
 scikit-learn<=0.22
 imgaug==0.2.8
-tensorflow<1.14
+tensorflow>=1.15
 backports.tempfile==1.0
 tqdm
