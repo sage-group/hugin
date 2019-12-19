@@ -423,3 +423,5 @@ It is used by the `RasterSceneTrainer` and `RasterScenePredictor` for assembling
 
 
 .. include:: isprs_example.rst
+
+.. include:: spacenet_example.rst
