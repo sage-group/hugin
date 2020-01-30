@@ -11,7 +11,7 @@ predictor: !!python/object/apply:hugin.engine.scene.RasterScenePredictor
     model: !!python/object/apply:hugin.engine.keras.KerasModel
       kwds:
         name: keras_predictor
-        model_path: /storage/syno1/SpaceNet-Roads/alex-train/models/unetv14_spacenetroads_vegas_tiles_twentypercent_adam_cat_crossentropy/thor.sage.ieat.ro-tardis.hdf5
+        model_path: /path/to/model.hdf5
         model_builder: hugin.models.unet.unetv14:unet_v14
     stride_size: 256
     window_size: [256, 256]
@@ -27,5 +27,5 @@ predictor: !!python/object/apply:hugin.engine.scene.RasterScenePredictor
 
 output: !!python/object/apply:hugin.engine.scene.RasterIOSceneExporter
   kwds:
-     destination: "/home/alex/postdam_predictions"
+     destination: "/path/for/output/tiles/"
      filename_pattern: '{scene_id}.tif'

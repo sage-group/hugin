@@ -1,11 +1,11 @@
 configuration:
-  model_path: "/home/alex/experiments/{name}"
+  model_path: "/path/to/save/model/{name}"
 data_source: !!python/object/apply:hugin.io.FileSystemLoader
   kwds:
     data_pattern: '(?P<category>[0-9A-Za-z_]+)_AOI_(?P<location_id>[0-9])_(?P<location>[A-Za-z]+)_(?P<type>[A-Za-z-]+)_(img|chip)(?P<idx>[0-9]+)(?P<extension>(tif|tiff|geojson))$'
     id_format: '{location}_{idx}'
     type_format: '{type}'
-    input_source: '/storage/syno1/Spacenet_5/AOI_2_Vegas_Roads_Train/'
+    input_source: '/path/to/spacenet/dataset/directory/'
     dynamic_types:
       GENERATED_GTI: !!python/object/apply:hugin.preprocessing.rasterize.RasterFromShapesGenerator
         kwds:
@@ -24,7 +24,7 @@ trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
     model: !!python/object/apply:hugin.engine.keras.KerasModel
       kwds:
         name: spacenet_vegas_unetv14_dice
-        model_path: "/home/alex/experiments/{name}"
+        model_path: "/path/for/model/output/{name}"
         model_builder: hugin.models.unet.unetv14:unet_v14
         batch_size: 20
         epochs: 10

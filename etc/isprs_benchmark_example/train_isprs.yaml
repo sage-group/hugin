@@ -1,5 +1,5 @@
 configuration:
-  model_path: "/home/alex/experiments/{name}"
+  model_path: "/path/to/save/model/{name}"
 data_source: !!python/object/apply:hugin.io.FileSystemLoader
   kwds:
     data_pattern: '(top)_(?P<city>[A-Za-z]+)_(?P<cm>[0-9]+)_(?P<area>[0-9]+)_(?P<type>[A-Za-z]+)\.tif$'
@@ -18,7 +18,7 @@ trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
     model: !!python/object/apply:hugin.engine.keras.KerasModel
       kwds:
         name: keras_model
-        model_path: "/home/alex/experiments/{name}"
+        model_path: "/path/for/model/output/{name}"
         model_builder: hugin.models.unet.unetv14:unet_v14
         batch_size: 20
         epochs: 2
