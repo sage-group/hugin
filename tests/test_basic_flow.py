@@ -44,6 +44,36 @@ def mapping():
     }
     return mapping_conf
 
+
+@pytest.fixture
+def netCDF_mapping():
+    mapping_conf = {
+        'inputs': {
+            'input_1': {
+                'primary': True,
+                'channels': [
+                    ["NCDF", 'Band1'],
+                    ["NCDF", 'Band2'],
+                    ["NCDF", 'Band3']
+                ]
+            }
+        },
+        'target': {
+            'output_1': {
+                'channels': [
+                    ["GTI", 1]
+                ],
+                'window_shape': (256, 256),
+                'stride': 256,
+                'preprocessing': [
+                    BinaryCategoricalConverter(do_categorical=False)
+                ]
+            }
+        }
+    }
+    return mapping_conf
+
+
 @pytest.fixture
 def raster_predictors(mapping):
     identity_model = IdentityModel(name="dummy_identity_model", num_loops=3)
@@ -61,7 +91,7 @@ def raster_predictors(mapping):
     return raster_predictor
 
 # @pytest.mark.skipif(not runningInCI(), reason="Skipping running locally as it might be too slow")
-def test_identity_complete_flow(generated_filesystem_loader, mapping):
+def test_identity_complete_flow(generated_filesystem_loader, mapping, netCDF_mapping):
     _test_identity_training(generated_filesystem_loader, IdentityModel, mapping)
 
     ### Fix Issue #6
@@ -72,9 +102,14 @@ def test_identity_complete_flow(generated_filesystem_loader, mapping):
 
     new_mapping = mapping.copy()
     del new_mapping['target']
-    _test_identity_prediction(generated_filesystem_loader, IdentityModel, new_mapping)
-    _test_identity_prediction_avgmerger(generated_filesystem_loader, IdentityModel, new_mapping)
-    _test_identity_avg_prediction(generated_filesystem_loader, IdentityModel, new_mapping)
+    # _test_identity_prediction(generated_filesystem_loader, IdentityModel, new_mapping)
+    # _test_identity_prediction_avgmerger(generated_filesystem_loader, IdentityModel, new_mapping)
+    # _test_identity_avg_prediction(generated_filesystem_loader, IdentityModel, new_mapping)
+
+    _test_identity_training(generated_filesystem_loader, IdentityModel, netCDF_mapping)
+    _test_identity_prediction(generated_filesystem_loader, IdentityModel, netCDF_mapping)
+    # _test_identity_prediction_avgmerger(generated_filesystem_loader, IdentityModel, netCDF_mapping)
+    # _test_identity_avg_prediction(generated_filesystem_loader, IdentityModel, netCDF_mapping)
 
 
 def _test_identity_training(loader, model, mapping):

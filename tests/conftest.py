@@ -1,6 +1,7 @@
 import json
 import os
 import random
+import subprocess
 from tempfile import TemporaryDirectory
 
 import numpy as np
@@ -8,7 +9,6 @@ import pytest
 import rasterio
 import rasterio.features
 import rasterio.warp
-import netCDF4
 
 from rasterio.transform import from_origin
 from skimage.draw import rectangle, circle
@@ -68,10 +68,9 @@ class GenerateFileSystemLoader():
                 if color == match_color:
                     data_mask[rr, cc] = 1
 
-            fname = os.path.join(tempdir_name, "TEST_RGB_{}.tiff".format(imgidx + 1))
-            mname = os.path.join(tempdir_name, "TEST_GTI_{}.tiff".format(imgidx + 1))
-            nname = os.path.join(tempdir_name, "TEST_RGBN_{}.nc".format(imgidx + 1))
-            gname = os.path.join(tempdir_name, "TEST_GT_{}.geojson".format(imgidx + 1))
+            fname = os.path.join(tempdir_name, f"TEST_RGB_{imgidx + 1}.tiff")
+            mname = os.path.join(tempdir_name, f"TEST_GTI_{imgidx + 1}.tiff")
+            gname = os.path.join(tempdir_name, f"TEST_GT_{imgidx + 1}.geojson")
 
             res = 0.5
             transform = from_origin(coords[0], coords[1], res, res)
@@ -101,42 +100,12 @@ class GenerateFileSystemLoader():
                 crs={'init': 'epsg:3857'},
             )
 
-            # netcdf creation related
-            # netcdf_image = netCDF4.Dataset(nname, 'w')
-            # netcdf_image.set_fill_off()
-            # netcdf_image.missing_value = 0
-            # netcdf_image.createDimension('lat', data.shape[0])
-            # netcdf_image.createDimension('lon', data.shape[1])
-            #
-            # lat = netcdf_image.createVariable('lat', 'f4', ('lat'))
-            # lat.units = 'degrees_north'
-            # lat.long_name = 'latitude'
-            # lat.valid_min = coords[0]
-            # lat.valid_max = coords[0] + width
-            # long = netcdf_image.createVariable('lon', 'f4', ('lon'))
-            # long.units = 'degrees_east'
-            # long.long_name = 'longitude'
-            # long.valid_min = coords[1]
-            # long.valid_max = coords[1] + height
-            # print(f'TEST_COORDS: {(lat, long)}')
-            #
-            # red = netcdf_image.createVariable('red', 'u4', ('lat', 'lon'))
-            # green = netcdf_image.createVariable('green', 'u4', ('lat', 'lon'))
-            # blue = netcdf_image.createVariable('blue', 'u4', ('lat', 'lon'))
-            # _netcdf_data = [red, green, blue]
-
-            # red[:] = data[:, :, 0]
-            # green[:] = data[:, :, 1]
-            # blue[:] = data[:, :, 2]
-
             for i in range(0, data.shape[-1]):
                 rgb_image.write(data[:, :, i], i + 1)
-                # _netcdf_data[i][:] = data[:, :, i]
-            gti_image.write(data_mask, 1)
 
+            gti_image.write(data_mask, 1)
             gti_image.close()
             rgb_image.close()
-            # netcdf_image.close()
 
             with rasterio.open(mname) as gti:
                 src = gti.read()
@@ -150,7 +119,14 @@ class GenerateFileSystemLoader():
                 with open(gname, 'w') as dst_geojson:
                     dst_geojson.write(json.dumps(features_col))
 
-        import subprocess
+        for file in filter(lambda x: 'RGB' in x, os.listdir(tempdir_name)):
+            _outf = file.replace('.tiff', '.nc').replace('RGB', 'NCDF')
+
+            subprocess.Popen(['gdal_translate', '-of', 'netCDF',
+                              os.path.join(tempdir_name, file),
+                              os.path.join(tempdir_name, _outf)]).wait()
+
+        # ToDo: don't forget to delete this line after you're done
         subprocess.Popen(['cp','-r',tempdir_name,'/home/alex/temp'])
 
         with open(sgname, 'w') as dst_geojson:
