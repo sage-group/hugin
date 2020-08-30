@@ -85,9 +85,15 @@ class ColorMapperConverter(object):
         pass
 
 
-def adapt_shape_and_stride(scene, base_scene, shape, stride, offset='ul'):
+def adapt_shape_and_stride(scene, base_scene, shape, stride, offset='center'):
     if scene == base_scene:
         return shape, stride
+
+    # The following snipped is a workaround for intermitent issues regarding coregistration between input scene and GTI, even if they are of the same resolution
+    # Should be fixed by getting rid of cartesian indexing and using only geographical indexing
+    if scene.crs == base_scene.crs: ### ToDo: FixMe
+        return shape, stride
+   
     x_geo_orig, y_geo_orig = base_scene.xy(shape[0], shape[1], offset=offset)
 
     computed_shape = scene.index(x_geo_orig, y_geo_orig)
@@ -149,7 +155,7 @@ class TileGenerator(object):
 
     @backoff.on_exception(backoff.expo, OSError, max_time=120)
     def read_window(self, dset, band, window):
-        data = dset.read(band, window=window)
+        data = dset.read(band, window=window, boundless=True, fill_value=0)
 
         self._count += 1
         return data
@@ -158,7 +164,7 @@ class TileGenerator(object):
         if not mapping: return
 
         window_width, window_height = target_shape
-
+        
         mapping_level_preprocessing = mapping.get('preprocessing', [])
         augmented_mapping = augment_mapping_with_datasets(dataset, mapping)
 
@@ -247,6 +253,7 @@ class TileGenerator(object):
         for mapping_name, mapping in input_mapping.items():
             base_channel = mapping['channels'][0][0]
             target_shape, target_stride = mapping["window_shape"], mapping["stride"]
+            
             input_generators[mapping_name] = self._generate_tiles_for_mapping(self._scene, mapping, target_shape,
                                                                               target_stride)
 
