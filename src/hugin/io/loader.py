@@ -54,7 +54,6 @@ class CategoricalConverter(object):
         if not self._channel_last:
             #cat = np.swapaxes(np.swapaxes(cat, 0, 1), 1, 2)
             cat = np.swapaxes(np.swapaxes(cat, 2, 1), 1, 0) # how an I save?
-        print ("old_entry: ", old_shape.shape, "new entry:", entry.shape, "cat:", old_cat.shape, "new_cat:", cat.shape)
         return cat
 
    
@@ -225,7 +224,6 @@ class TileGenerator(object):
                     preprocessing_callbacks = map_entry.get("preprocessing", [])
 
                     band = self.read_window(backing_store, channel, window)
-                    print (band.shape)
                     if normalization_value is not None and normalization_value != 1:
                         band = band / normalization_value
                     if transform_expression is not None:
@@ -237,6 +235,7 @@ class TileGenerator(object):
 
                     if buffer is None:
                         buffer = np.zeros((len(augmented_mapping),) + band.shape, dtype=band.dtype)
+
                     if buffer.dtype != band.dtype:
                         buffer = buffer.astype(np.find_common_type([buffer.dtype, band.dtype], []))
                     buffer[count - 1] = band
@@ -244,10 +243,13 @@ class TileGenerator(object):
                 img_data = buffer if not self._copy else buffer.copy()
                 count = 0
 
+                # the next code block is for fixing the issue of multilabel categorical output
+                if img_data.shape[0] == 1: #### hackish. # ToDo: fix me
+                    img_data = img_data.reshape(img_data.shape[1:])
+
                 if self.swap_axes:
-                    old_i = img_data
                     img_data = np.swapaxes(np.swapaxes(img_data, 0, 1), 1, 2)
-                    print ("Old: ", old_i.shape, "New: ", img_data.shape)
+
                 yield img_data
 
     def generate_tiles_for_dataset(self):
