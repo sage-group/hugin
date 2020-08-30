@@ -40,15 +40,23 @@ class NullFormatConverter(object):
 
 
 class CategoricalConverter(object):
-    def __init__(self, num_classes=2):
+    def __init__(self, num_classes=2, channel_last=False):
         self._num_classes = num_classes
+        self._channel_last = channel_last
 
     def __call__(self, entry):
-        # entry = entry.reshape(entry.shape + (1, ))
+        old_shape = entry
+        entry = entry.reshape(entry.shape + (1, ))
+        #if not self._channel_last:
+        #        entry = np.swapaxes(np.swapaxes(entry, 0, 1), 1, 2)
         cat = to_categorical(entry, self._num_classes)
+        old_cat = cat
+        if not self._channel_last:
+            #cat = np.swapaxes(np.swapaxes(cat, 0, 1), 1, 2)
+            cat = np.swapaxes(np.swapaxes(cat, 2, 1), 1, 0) # how an I save?
         return cat
 
-
+   
 class BinaryCategoricalConverter(CategoricalConverter):
     """
     Converter used for representing Urband3D Ground Truth / GTI
@@ -85,9 +93,15 @@ class ColorMapperConverter(object):
         pass
 
 
-def adapt_shape_and_stride(scene, base_scene, shape, stride, offset='ul'):
+def adapt_shape_and_stride(scene, base_scene, shape, stride, offset='center'):
     if scene == base_scene:
         return shape, stride
+
+    # The following snipped is a workaround for intermitent issues regarding coregistration between input scene and GTI, even if they are of the same resolution
+    # Should be fixed by getting rid of cartesian indexing and using only geographical indexing
+    if scene.crs == base_scene.crs: ### ToDo: FixMe
+        return shape, stride
+   
     x_geo_orig, y_geo_orig = base_scene.xy(shape[0], shape[1], offset=offset)
 
     computed_shape = scene.index(x_geo_orig, y_geo_orig)
@@ -149,7 +163,7 @@ class TileGenerator(object):
 
     @backoff.on_exception(backoff.expo, OSError, max_time=120)
     def read_window(self, dset, band, window):
-        data = dset.read(band, window=window)
+        data = dset.read(band, window=window, boundless=True, fill_value=0)
 
         self._count += 1
         return data
@@ -158,7 +172,7 @@ class TileGenerator(object):
         if not mapping: return
 
         window_width, window_height = target_shape
-
+        
         mapping_level_preprocessing = mapping.get('preprocessing', [])
         augmented_mapping = augment_mapping_with_datasets(dataset, mapping)
 
@@ -221,6 +235,7 @@ class TileGenerator(object):
 
                     if buffer is None:
                         buffer = np.zeros((len(augmented_mapping),) + band.shape, dtype=band.dtype)
+
                     if buffer.dtype != band.dtype:
                         buffer = buffer.astype(np.find_common_type([buffer.dtype, band.dtype], []))
                     buffer[count - 1] = band
@@ -228,8 +243,13 @@ class TileGenerator(object):
                 img_data = buffer if not self._copy else buffer.copy()
                 count = 0
 
+                # the next code block is for fixing the issue of multilabel categorical output
+                if img_data.shape[0] == 1: #### hackish. # ToDo: fix me
+                    img_data = img_data.reshape(img_data.shape[1:])
+
                 if self.swap_axes:
                     img_data = np.swapaxes(np.swapaxes(img_data, 0, 1), 1, 2)
+
                 yield img_data
 
     def generate_tiles_for_dataset(self):
@@ -247,6 +267,7 @@ class TileGenerator(object):
         for mapping_name, mapping in input_mapping.items():
             base_channel = mapping['channels'][0][0]
             target_shape, target_stride = mapping["window_shape"], mapping["stride"]
+            
             input_generators[mapping_name] = self._generate_tiles_for_mapping(self._scene, mapping, target_shape,
                                                                               target_stride)
 

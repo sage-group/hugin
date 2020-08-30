@@ -11,6 +11,7 @@ from tempfile import TemporaryFile, NamedTemporaryFile
 
 from hugin.engine.core import metric_processor
 from hugin.io.loader import CategoricalConverter as TrainingCategoricalConverter
+from hugin.io.loader import NullFormatConverter
 from .core import NullMerger, postprocessor
 from ..io import DataGenerator, DatasetGenerator
 from ..io.loader import adapt_shape_and_stride
@@ -124,7 +125,7 @@ class CoreScenePredictor(BaseSceneModel):
                  prediction_merger=NullMerger,
                  post_processors=None, # Run after we get the data form predictors
                  pre_processors=None, # Run before sending the data to predictors
-                 format_converter=TrainingCategoricalConverter(2),
+                 format_converter=NullFormatConverter(),
                  metrics=None):
         """
 
