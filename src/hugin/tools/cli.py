@@ -41,7 +41,7 @@ def main():
     subparsers = parser.add_subparsers(help='Available commands')
 
     train_parser = subparsers.add_parser('train', help="Train a model")
-    train_parser.add_argument('--config', type=argparse.FileType('r'), required=False, default=None,
+    train_parser.add_argument('--config', type=argparse.FileType('r'), required=True, default=None,
                               help='Path to config file')
     train_parser.add_argument('--input-dir', required=False, default=None, help=argparse.SUPPRESS)
     train_parser.set_defaults(func=train_handler)
