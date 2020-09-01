@@ -2,4 +2,6 @@ FROM registry.dev.info.uvt.ro/sage/docker-packages/hugin-power
 #FROM sagegroup/sage-eo-powerai
 COPY . /opt/hugin-src
 WORKDIR /opt/hugin-src
+ENV PATH="/opt/conda/envs/hugin/bin:${PATH}"
+ENV PROJ_LIB="/opt/conda/envs/hugin/share/proj"
 RUN /opt/conda/envs/hugin/bin/python /opt/hugin-src/setup.py develop
