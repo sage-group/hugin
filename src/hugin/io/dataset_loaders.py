@@ -30,6 +30,8 @@ from urllib.parse import urlparse
 import geopandas as gp
 import rasterio
 import yaml
+import json
+import pickle
 from geopandas import GeoDataFrame
 from rasterio import RasterioIOError, MemoryFile
 from rasterio.io import DatasetReader
@@ -45,6 +47,36 @@ except ImportError:
     from yaml import Dumper as Dumper
 
 log = logging.getLogger(__name__)
+
+
+def load_persistence_file(file_name):
+    extension = os.path.splitext(file_name.lower())[-1]
+    if extension in (".yaml", ".yml"):
+        with open(file_name, "r") as f:
+            data = yaml.load(f, Loader=Loader)
+            return data
+    elif extension in (".json", ".js"):
+        with open(file_name, "r") as f:
+            return json.load(f)
+    elif extension in (".pickle", ):
+        with open(file_name, "r") as f:
+            return pickle.load(f)
+    else:
+        raise NotImplementedError("Unsupported persistence format")
+
+def save_persistence_file(file_name, persist_data):
+    extension = os.path.splitext(file_name.lower())[-1]
+    if extension in (".yaml", ".yml"):
+        with open(file_name, "w") as f:
+            yaml.dump(persist_data, f, Dumper=Dumper)
+    elif extension in (".json", ".js"):
+        with open(file_name, "w") as f:
+            json.dump(persist_data, f)
+    elif extension in (".pickle", ):
+        with open(file_name, "w") as f:
+            pickle.dump(persist_data, f)
+    else:
+        raise NotImplementedError("Unsupported persistence format")
 
 
 class BaseLoader(object):
@@ -114,16 +146,15 @@ class BaseLoader(object):
 
         if self.persist_file and os.path.exists(self.persist_file):
             log.info("Loading datasets from persistence file: %s", self.persist_file)
-            with open(self.persist_file, "r") as f:
-                data = yaml.load(f, Loader=Loader)
-                self._evaluation_list = data['evaluation']
-                self._train_list = data['training']
-                all_datasets = self._evaluation_list + self._train_list
-                _datasets = OrderedDict()
-                for k,v in all_datasets:
-                    _datasets[k] = v
-                self._datasets = _datasets
-                self._update_dynamic_types()
+            data = load_persistence_file(self.persist_file)
+            self._evaluation_list = data['evaluation']
+            self._train_list = data['training']
+            all_datasets = self._evaluation_list + self._train_list
+            _datasets = OrderedDict()
+            for k,v in all_datasets:
+                _datasets[k] = v
+            self._datasets = _datasets
+            self._update_dynamic_types()
         else:
             self.scan_datasets()
 
@@ -141,8 +172,7 @@ class BaseLoader(object):
                 'training': self._train_list
             }
             log.info("Persisting datasets to: %s", self.persist_file)
-            with open(self.persist_file, "w") as f:
-                yaml.dump(persist_data, f, Dumper=Dumper)
+            save_persistance_file(self.persist_file, persist_data)
 
         # Add dynamic types
         self._update_dynamic_types()
