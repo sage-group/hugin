@@ -1,0 +1,5 @@
+FROM registry.dev.info.uvt.ro/sage/docker-packages/hugin-power
+#FROM sagegroup/sage-eo-powerai
+COPY . /opt/hugin-src
+WORKDIR /opt/hugin-src
+RUN /opt/conda/envs/hugin/bin/python /opt/hugin-src/setup.py develop
