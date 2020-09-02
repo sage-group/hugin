@@ -7,6 +7,8 @@ import numpy as np
 import rasterio
 
 from logging import getLogger
+
+from hugin.io import ThreadedDataGenerator
 from tempfile import TemporaryFile, NamedTemporaryFile
 
 from hugin.engine.core import metric_processor
@@ -27,7 +29,8 @@ class MultipleSceneModel:
 
     def __init__(self,
                  scene_id_filter=None,
-                 randomize_training=True):
+                 randomize_training=True,
+                 threaded=True):
         """
 
         :param scene_id_filter: Regex for filtering scenes according to their id (optional)
@@ -36,6 +39,7 @@ class MultipleSceneModel:
 
         self.scene_id_filter = None if not scene_id_filter else re.compile(scene_id_filter)
         self.randomize_training = randomize_training
+        self.threaded = threaded
 
     def predict_scenes_proba(self, scenes, predictor=None):
         """Run the predictor on all input scenes
@@ -100,6 +104,9 @@ class MultipleSceneModel:
         if self.predictor.destination is None:
             self.predictor.destination = self.destination
 
+        if self.threaded:
+            train_data = ThreadedDataGenerator(train_data)
+            validation_data = ThreadedDataGenerator(validation_data)
         log.info("Running training from %s", trainer.predictor)
         self.predictor.fit_generator(train_data, validation_data, **options)
         log.info("Training completed")
