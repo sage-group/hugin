@@ -594,7 +594,7 @@ class ThreadedDataGenerator(threading.Thread):
         self._queue_size = queue_size
         self._data_generator = data_generator
         if self._queue_size is None:
-            self._queue_size = os.environ.get('HUGIN_DATA_GENERATOR_QUEUE_SIZE', 4)
+            self._queue_size = int(os.environ.get('HUGIN_DATA_GENERATOR_QUEUE_SIZE', 4))
         self._q = Queue(maxsize=self._queue_size)
         self._len = len(self._data_generator)
         self._data_generator_flow = self._flow_data()
