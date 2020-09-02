@@ -73,7 +73,7 @@ def save_persistence_file(file_name, persist_data):
         with open(file_name, "w") as f:
             json.dump(persist_data, f)
     elif extension in (".pickle", ):
-        with open(file_name, "w") as f:
+        with open(file_name, "wb") as f:
             pickle.dump(persist_data, f)
     else:
         raise NotImplementedError("Unsupported persistence format")
