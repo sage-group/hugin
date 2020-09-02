@@ -59,7 +59,7 @@ def load_persistence_file(file_name):
         with open(file_name, "r") as f:
             return json.load(f)
     elif extension in (".pickle", ):
-        with open(file_name, "r") as f:
+        with open(file_name, "rb") as f:
             return pickle.load(f)
     else:
         raise NotImplementedError("Unsupported persistence format")
