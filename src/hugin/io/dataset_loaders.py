@@ -172,7 +172,7 @@ class BaseLoader(object):
                 'training': self._train_list
             }
             log.info("Persisting datasets to: %s", self.persist_file)
-            save_persistance_file(self.persist_file, persist_data)
+            save_persistence_file(self.persist_file, persist_data)
 
         # Add dynamic types
         self._update_dynamic_types()
