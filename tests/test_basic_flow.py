@@ -71,6 +71,7 @@ def netCDF_mapping():
             }
         }
     }
+
     return mapping_conf
 
 
@@ -92,22 +93,24 @@ def raster_predictors(mapping):
 
 # @pytest.mark.skipif(not runningInCI(), reason="Skipping running locally as it might be too slow")
 def test_identity_complete_flow(generated_filesystem_loader, mapping, netCDF_mapping):
-    _test_identity_training(generated_filesystem_loader, IdentityModel, mapping)
-
-    ### Fix Issue #6
-    no_primary_mapping = deepcopy(mapping)
-    del no_primary_mapping["inputs"]["input_1"]["primary"]
-    _test_identity_training(generated_filesystem_loader, IdentityModel, no_primary_mapping)
-    ### End Issue #6
-
+    # _test_identity_training(generated_filesystem_loader, IdentityModel, mapping)
+    #
+    # ### Fix Issue #6
+    # no_primary_mapping = deepcopy(mapping)
+    # del no_primary_mapping["inputs"]["input_1"]["primary"]
+    # _test_identity_training(generated_filesystem_loader, IdentityModel, no_primary_mapping)
+    # ### End Issue #6
+    #
     new_mapping = mapping.copy()
     del new_mapping['target']
     # _test_identity_prediction(generated_filesystem_loader, IdentityModel, new_mapping)
     # _test_identity_prediction_avgmerger(generated_filesystem_loader, IdentityModel, new_mapping)
     # _test_identity_avg_prediction(generated_filesystem_loader, IdentityModel, new_mapping)
-
-    _test_identity_training(generated_filesystem_loader, IdentityModel, netCDF_mapping)
-    _test_identity_prediction(generated_filesystem_loader, IdentityModel, netCDF_mapping)
+    #
+    # _test_identity_training(generated_filesystem_loader, IdentityModel, netCDF_mapping)
+    prediction_netcdf_mapping = netCDF_mapping.copy()
+    del prediction_netcdf_mapping['target']
+    _test_identity_prediction(generated_filesystem_loader, IdentityModel, prediction_netcdf_mapping)
     # _test_identity_prediction_avgmerger(generated_filesystem_loader, IdentityModel, netCDF_mapping)
     # _test_identity_avg_prediction(generated_filesystem_loader, IdentityModel, netCDF_mapping)
 
@@ -146,10 +149,17 @@ def _test_identity_training(loader, model, mapping):
 
 def _get_input_and_prediction_data(loader, dest_tmpdir):
     for scene in loader:
-        input_file = scene[1]['RGB']
+        # it = 'RGB'
+        it = 'NCDF'
+        input_file = scene[1][it]
         input_data = input_file.read()
-        prediction = os.path.join(dest_tmpdir,
-                                  os.path.split(input_file.name)[-1].replace('_RGB', ''))
+
+        if it == 'RGB':
+            prediction = os.path.join(dest_tmpdir,
+                                      os.path.split(input_file.name)[-1].replace('_RGB', ''))
+        elif it == 'NCDF':
+            prediction = os.path.join(dest_tmpdir,
+                                      os.path.split(input_file.name)[-1].replace('_NCDF', '').replace('.nc', '.tiff'))
 
         with rasterio.open(prediction) as prediction_file:
             prediction_data = prediction_file.read()
@@ -178,8 +188,8 @@ def _test_identity_prediction(loader, model, mapping):
                                                  rasterio_creation_options={
                                                      'blockxsize': 256,
                                                      'blockysize': 256
-                                                 }
-            )
+                                                     }
+                                                 )
 
             dataset_loader.reset()
             raster_saver.flow_prediction_from_source(dataset_loader, raster_predictor)

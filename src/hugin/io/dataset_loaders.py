@@ -385,9 +385,6 @@ class DatasetGenerator(object):
             if isinstance(component_path_entry, (RasterGenerator, GeoDataFrame, MemoryFile, RasterDataset, Component)):
                 new_components[component_name] = component_path_entry
                 continue
-            elif isinstance(component_path_entry, GeoDataFrame):
-                new_components[component_name] = component_path_entry
-                continue
             elif isinstance(component_path_entry, DatasetReader):
                 component_path = component_path_entry.name
             elif isinstance(component_path_entry, str):

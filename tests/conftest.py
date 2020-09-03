@@ -84,7 +84,7 @@ class GenerateFileSystemLoader():
                 driver='GTiff',
                 dtype=data.dtype,
                 transform=transform,
-                crs={'init': 'epsg:3857'},
+                crs={'init': 'epsg:4326'},
             )
             gti_image = rasterio.open(
                 mname,
@@ -97,7 +97,7 @@ class GenerateFileSystemLoader():
                 transform=transform,
                 compress='none',
                 tiled=True,
-                crs={'init': 'epsg:3857'},
+                crs={'init': 'epsg:4326'},
             )
 
             for i in range(0, data.shape[-1]):
@@ -126,9 +126,6 @@ class GenerateFileSystemLoader():
                               os.path.join(tempdir_name, file),
                               os.path.join(tempdir_name, _outf)]).wait()
 
-        # ToDo: don't forget to delete this line after you're done
-        subprocess.Popen(['cp','-r',tempdir_name,'/home/alex/temp'])
-
         with open(sgname, 'w') as dst_geojson:
             dst_geojson.write(json.dumps(single_geojson))
 
@@ -146,7 +143,6 @@ class GenerateFileSystemLoader():
         else:
             base_kwargs['dynamic_types'] = {'GENERATED_GROUNDTRUTH': RasterFromShapesGenerator(base_component='RGB',
                                                                                                shape_input=sgname)}
-
 
         loader = FileSystemLoader(**base_kwargs)
         loader.__temp_input_directory = tempdir

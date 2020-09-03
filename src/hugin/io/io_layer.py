@@ -1,5 +1,8 @@
+import os
 import inspect
 from abc import ABC, abstractmethod
+
+import numpy as np
 
 import rasterio as rio
 import rioxarray as riox
@@ -100,19 +103,20 @@ class NetCDFComponent(Component):
     def read(self, band=None, window=None):
         if band is not None:
             if window is not None:
-                return self.data.rio.isel_window(window)[band].data
+                return np.squeeze(self.data.rio.isel_window(window)[band].data)
             else:
-                return self.data[band].data
+                return np.squeeze(self.data[band].data)
         else:
             if window is not None:
-                return self.data.rio.isel_window(window).to_array().data
+                return np.squeeze(self.data.rio.isel_window(window).to_array().data)
             else:
-                return self.data.to_array().data
+                return np.squeeze(self.data.to_array().data)
 
     def write(self):
         raise NotImplementedError
 
     def open(self, path_to_a_file):
+        self.name = os.path.basename(path_to_a_file)
         self.data = riox.open_rasterio(path_to_a_file)
         [setattr(self, m[0], m[1]) for m in inspect.getmembers(self.data.rio) if not m[0].startswith('_')]
 
@@ -140,10 +144,6 @@ class RasterComponent(Component):
     def open(self, path_to_a_file):
         self.data = rio.open(path_to_a_file)
         [setattr(self, m[0], m[1]) for m in inspect.getmembers(self.data) if not m[0].startswith('_')]
-
-        # self.profile = self.data.profile
-
-        # ToDo: copy rio datasetreader props to this one!
 
     def get_new_object(self, path_to_component):
         self.open(path_to_component)
