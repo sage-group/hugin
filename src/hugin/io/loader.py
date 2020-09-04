@@ -585,7 +585,7 @@ class DataGenerator(object):
             entry = collector_queue.get()
             if entry is None:
                 break
-
+            start_time = time.time()
             count += 1
 
             input_patches, output_patches = entry
@@ -611,8 +611,9 @@ class DataGenerator(object):
                 out_arrays = {}
                 for k,v in output_data.items():
                     out_arrays[k] = v if not self._copy else v.copy()
-
+                end_time = time.time()
                 yield (self._flaten_simple_input(in_arrays), self._flaten_simple_input(out_arrays))
+                print ("Batch assembly: ", end_time-start_time)
                 count = 0
 
         if count > 0:
