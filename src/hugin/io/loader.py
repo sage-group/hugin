@@ -513,7 +513,12 @@ class DataGenerator(object):
         return self._num_tiles
 
     def __next__(self):
-        return next(self.__output_generator_object)
+        try:
+            start_time = time.time()
+            return next(self.__output_generator_object)
+        finally:
+            end_time = time.time()
+            print ("Generator next() time: ", end_time-start_time)
 
     def __iter__(self):
         return self
