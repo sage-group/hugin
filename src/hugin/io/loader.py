@@ -16,9 +16,11 @@ __license__ = \
     """
 
 import logging
+import queue
 import threading
 from collections import OrderedDict
 from queue import Queue
+import time
 
 
 import backoff
@@ -351,6 +353,7 @@ class DataGenerator(object):
                  loop=True,
                  format_converter=NullFormatConverter(),
                  swap_axes=False,
+                 workers=16,
                  postprocessing_callbacks=[],
                  optimise_huge_datasets=True,
                  default_window_size=None,
@@ -359,6 +362,7 @@ class DataGenerator(object):
 
 
         self._copy = copy
+        self.workers = workers
 
         if type(input_mapping) is list or type(input_mapping) is tuple:
             input_mapping = self._convert_input_mapping(input_mapping)
@@ -533,47 +537,83 @@ class DataGenerator(object):
         input_data = {}
         output_data = {}
 
-        scene_count = 0
         callbacks = self._postprocessing_callbacks
+        num_workers = self.workers
+        scene_queue = queue.Queue()
 
-        for scene in dataset_loader:
-            scene_count += 1
-            scene_id, scene_data = scene
-            tile_generator = TileGenerator(scene_data,
-                                           self.primary_window_shape,
-                                           stride=self.primary_stride,
-                                           mapping=self._mapping,
-                                           swap_axes=self._swap_axes)
+        def yield_scenes():
+            for scene in dataset_loader:
+                scene_id, scene_data = scene
+                scene_queue.put(scene_data)
+            for i in range(num_workers):
+                scene_queue.put(None)
 
-            for entry in tile_generator:
-                count += 1
+        tile_queue = queue.Queue()
+        def yield_tiles_for_scene():
+            while True:
+                scene_data = scene_queue.get()
+                if scene_data is None:
+                    break
+                tile_generator = TileGenerator(scene_data,
+                                               self.primary_window_shape,
+                                               stride=self.primary_stride,
+                                               mapping=self._mapping,
+                                               swap_axes=self._swap_axes)
+                for entry in tile_generator:
+                    tile_queue.put(entry)
+            tile_queue.put(None)
 
-                input_patches, output_patches = entry
+        collector_queue = queue.Queue()
 
-                for callback in callbacks:
-                    input_patches, output_patches = callback(input_patches, output_patches)
+        def collector():
+            remaining_workers = num_workers
+            while True:
+                data = tile_queue.get()
+                if data is None:
+                    remaining_workers = remaining_workers - 1
+                    if remaining_workers == 0:
+                        collector_queue.put(None)
+                        break
+                collector_queue.put(data)
 
-                for in_patch_name, in_patch_value in input_patches.items():
-                    if in_patch_name not in input_data:
-                        input_data[in_patch_name] = np.zeros((self._batch_size,) + in_patch_value.shape, dtype=in_patch_value.dtype)
-                    input_data[in_patch_name][count - 1] = in_patch_value
+        threading.Thread(target=collector).start()
+        threading.Thread(target=yield_scenes).start()
+        for i in range(num_workers):
+            threading.Thread(target=yield_tiles_for_scene).start()
 
-                for out_patch_name, out_patch_value in output_patches.items():
-                    new_path_value = self._format_converter(out_patch_value)
-                    if out_patch_name not in output_data:
-                        output_data[out_patch_name] = np.zeros((self._batch_size, ) + new_path_value.shape, dtype=new_path_value.dtype)
-                    output_data[out_patch_name][count - 1] = new_path_value
+        while True:
+            entry = collector_queue.get()
+            if entry is None:
+                break
 
-                if count == self._batch_size:
-                    in_arrays = {}
-                    for k, v in input_data.items():
-                        in_arrays[k] = v if not self._copy else v.copy()
-                    out_arrays = {}
-                    for k,v in output_data.items():
-                        out_arrays[k] = v if not self._copy else v.copy()
+            count += 1
 
-                    yield (self._flaten_simple_input(in_arrays), self._flaten_simple_input(out_arrays))
-                    count = 0
+            input_patches, output_patches = entry
+
+            for callback in callbacks:
+                input_patches, output_patches = callback(input_patches, output_patches)
+
+            for in_patch_name, in_patch_value in input_patches.items():
+                if in_patch_name not in input_data:
+                    input_data[in_patch_name] = np.zeros((self._batch_size,) + in_patch_value.shape, dtype=in_patch_value.dtype)
+                input_data[in_patch_name][count - 1] = in_patch_value
+
+            for out_patch_name, out_patch_value in output_patches.items():
+                new_path_value = self._format_converter(out_patch_value)
+                if out_patch_name not in output_data:
+                    output_data[out_patch_name] = np.zeros((self._batch_size, ) + new_path_value.shape, dtype=new_path_value.dtype)
+                output_data[out_patch_name][count - 1] = new_path_value
+
+            if count == self._batch_size:
+                in_arrays = {}
+                for k, v in input_data.items():
+                    in_arrays[k] = v if not self._copy else v.copy()
+                out_arrays = {}
+                for k,v in output_data.items():
+                    out_arrays[k] = v if not self._copy else v.copy()
+
+                yield (self._flaten_simple_input(in_arrays), self._flaten_simple_input(out_arrays))
+                count = 0
 
         if count > 0:
             in_arrays = {}

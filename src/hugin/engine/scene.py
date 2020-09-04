@@ -8,11 +8,9 @@ import rasterio
 
 from logging import getLogger
 
-from hugin.io import ThreadedDataGenerator
 from tempfile import TemporaryFile, NamedTemporaryFile
 
 from hugin.engine.core import metric_processor
-from hugin.io.loader import CategoricalConverter as TrainingCategoricalConverter
 from hugin.io.loader import NullFormatConverter
 from .core import NullMerger, postprocessor
 from ..io import DataGenerator, DatasetGenerator
@@ -30,7 +28,7 @@ class MultipleSceneModel:
     def __init__(self,
                  scene_id_filter=None,
                  randomize_training=True,
-                 threaded=True):
+                 workers=1):
         """
 
         :param scene_id_filter: Regex for filtering scenes according to their id (optional)
@@ -39,7 +37,7 @@ class MultipleSceneModel:
 
         self.scene_id_filter = None if not scene_id_filter else re.compile(scene_id_filter)
         self.randomize_training = randomize_training
-        self.threaded = threaded
+        self.workers = workers
 
     def predict_scenes_proba(self, scenes, predictor=None):
         """Run the predictor on all input scenes
@@ -73,7 +71,8 @@ class MultipleSceneModel:
                                    swap_axes=self.predictor.swap_axes,
                                    postprocessing_callbacks=preprocessors,
                                    default_window_size=self.window_size,
-                                   default_stride_size=self.stride_size
+                                   default_stride_size=self.stride_size,
+                                   workers=self.workers
                                    )
 
         input_shapes, output_shapes = train_data.mapping_sizes
@@ -104,9 +103,6 @@ class MultipleSceneModel:
         if self.predictor.destination is None:
             self.predictor.destination = self.destination
 
-        if self.threaded:
-            train_data = ThreadedDataGenerator(train_data)
-            validation_data = ThreadedDataGenerator(validation_data)
         log.info("Running training from %s", trainer.predictor)
         self.predictor.fit_generator(train_data, validation_data, **options)
         log.info("Training completed")
