@@ -353,7 +353,7 @@ class DataGenerator(object):
                  loop=True,
                  format_converter=NullFormatConverter(),
                  swap_axes=False,
-                 workers=16,
+                 workers=32,
                  postprocessing_callbacks=[],
                  optimise_huge_datasets=True,
                  default_window_size=None,
