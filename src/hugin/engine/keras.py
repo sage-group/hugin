@@ -31,7 +31,7 @@ class KerasModel(RasterModel):
                  callbacks=None,
                  class_weight=None,
                  max_queue_size=10,
-                 workers=1,
+                 workers=None,
                  use_multiprocessing=False,
                  shuffle=True,
                  initial_epoch=0,
