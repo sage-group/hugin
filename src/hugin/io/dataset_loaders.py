@@ -59,10 +59,11 @@ def load_persistence_file(file_name):
         with open(file_name, "r") as f:
             return json.load(f)
     elif extension in (".pickle", ):
-        with open(file_name, "r") as f:
+        with open(file_name, "rb") as f:
             return pickle.load(f)
     else:
         raise NotImplementedError("Unsupported persistence format")
+
 
 def save_persistence_file(file_name, persist_data):
     extension = os.path.splitext(file_name.lower())[-1]
@@ -73,7 +74,7 @@ def save_persistence_file(file_name, persist_data):
         with open(file_name, "w") as f:
             json.dump(persist_data, f)
     elif extension in (".pickle", ):
-        with open(file_name, "w") as f:
+        with open(file_name, "wb") as f:
             pickle.dump(persist_data, f)
     else:
         raise NotImplementedError("Unsupported persistence format")
@@ -172,7 +173,7 @@ class BaseLoader(object):
                 'training': self._train_list
             }
             log.info("Persisting datasets to: %s", self.persist_file)
-            save_persistance_file(self.persist_file, persist_data)
+            save_persistence_file(self.persist_file, persist_data)
 
         # Add dynamic types
         self._update_dynamic_types()
