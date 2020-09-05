@@ -30,7 +30,8 @@ class MultipleSceneModel:
     def __init__(self,
                  scene_id_filter=None,
                  randomize_training=True,
-                 threaded=False):
+                 threaded=True,
+                 prefetch_queue_size=None):
         """
 
         :param scene_id_filter: Regex for filtering scenes according to their id (optional)
@@ -40,6 +41,7 @@ class MultipleSceneModel:
         self.scene_id_filter = None if not scene_id_filter else re.compile(scene_id_filter)
         self.randomize_training = randomize_training
         self.threaded = threaded
+        self.prefetch_queue_size = prefetch_queue_size
 
     def predict_scenes_proba(self, scenes, predictor=None):
         """Run the predictor on all input scenes
@@ -105,8 +107,9 @@ class MultipleSceneModel:
             self.predictor.destination = self.destination
 
         if self.threaded:
-            train_data = ThreadedDataGenerator(train_data)
-            validation_data = ThreadedDataGenerator(validation_data)
+            log.info("Using threaded data generator")
+            train_data = ThreadedDataGenerator(train_data, self.prefetch_queue_size)
+            validation_data = ThreadedDataGenerator(validation_data, self.prefetch_queue_size)
         log.info("Running training from %s", trainer.predictor)
         self.predictor.fit_generator(train_data, validation_data, **options)
         log.info("Training completed")
