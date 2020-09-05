@@ -48,8 +48,7 @@ class CategoricalConverter(object):
     def __call__(self, entry):
         old_shape = entry
         entry = entry.reshape(entry.shape + (1, ))
-        #if not self._channel_last:
-        #        entry = np.swapaxes(np.swapaxes(entry, 0, 1), 1, 2)
+        entry = np.squeeze(entry)
         cat = to_categorical(entry, self._num_classes)
         old_cat = cat
         if not self._channel_last:
@@ -247,7 +246,7 @@ class TileGenerator(object):
                 # # the next code block is for fixing the issue of multilabel categorical output
                 #if img_data.shape[0] == 1: #### hackish. # ToDo: fix me
                 #     img_data = img_data.reshape(img_data.shape[1:])
-                #img_data = np.squeeze(img_data)
+                img_data = np.squeeze(img_data)
 
                 if self.swap_axes:
                     img_data = np.swapaxes(np.swapaxes(img_data, 0, 1), 1, 2)
