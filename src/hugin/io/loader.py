@@ -164,7 +164,7 @@ class TileGenerator(object):
 
     @backoff.on_exception(backoff.expo, OSError, max_time=120)
     def read_window(self, dset, band, window):
-        data = dset.read(band, window=window, boundless=True, fill_value=0)
+        data = dset.read(band, window=window)
 
         self._count += 1
         return data
