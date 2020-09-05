@@ -30,7 +30,7 @@ class MultipleSceneModel:
     def __init__(self,
                  scene_id_filter=None,
                  randomize_training=True,
-                 threaded=True):
+                 threaded=False):
         """
 
         :param scene_id_filter: Regex for filtering scenes according to their id (optional)
