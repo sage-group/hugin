@@ -245,9 +245,9 @@ class TileGenerator(object):
                 count = 0
 
                 # # the next code block is for fixing the issue of multilabel categorical output
-                # if img_data.shape[0] == 1: #### hackish. # ToDo: fix me
+                #if img_data.shape[0] == 1: #### hackish. # ToDo: fix me
                 #     img_data = img_data.reshape(img_data.shape[1:])
-                img_data = np.squeeze(img_data)
+                #img_data = np.squeeze(img_data)
 
                 if self.swap_axes:
                     img_data = np.swapaxes(np.swapaxes(img_data, 0, 1), 1, 2)
