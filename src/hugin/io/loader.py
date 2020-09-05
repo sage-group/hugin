@@ -166,10 +166,7 @@ class TileGenerator(object):
 
     @backoff.on_exception(backoff.expo, OSError, max_time=120)
     def read_window(self, dset, band, window):
-        start_time = time.time()
         data = dset.read(band, window=window, boundless=True, fill_value=0)
-        end_time = time.time()
-        print ("read_window time: ", end_time-start_time)
         self._count += 1
         return data
 
@@ -251,7 +248,7 @@ class TileGenerator(object):
                 # # the next code block is for fixing the issue of multilabel categorical output
                 # if img_data.shape[0] == 1: #### hackish. # ToDo: fix me
                 #     img_data = img_data.reshape(img_data.shape[1:])
-                img_data = np.squeeze(img_data)
+                #img_data = np.squeeze(img_data)
 
                 if self.swap_axes:
                     img_data = np.swapaxes(np.swapaxes(img_data, 0, 1), 1, 2)
@@ -355,7 +352,7 @@ class DataGenerator(object):
                  loop=True,
                  format_converter=NullFormatConverter(),
                  swap_axes=False,
-                 workers=32,
+                 workers=1,
                  postprocessing_callbacks=[],
                  optimise_huge_datasets=True,
                  default_window_size=None,
@@ -520,7 +517,7 @@ class DataGenerator(object):
             return next(self.__output_generator_object)
         finally:
             end_time = time.time()
-            print ("Generator next() time: ", end_time-start_time)
+            #print ("Generator next() time: ", end_time-start_time)
 
     def __iter__(self):
         return self
@@ -620,7 +617,7 @@ class DataGenerator(object):
                     out_arrays[k] = v if not self._copy else v.copy()
                 end_time = time.time()
                 yield (self._flaten_simple_input(in_arrays), self._flaten_simple_input(out_arrays))
-                print ("Batch assembly: ", end_time-start_time)
+                #print ("Batch assembly: ", end_time-start_time)
                 count = 0
 
         if count > 0:
