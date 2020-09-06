@@ -110,7 +110,7 @@ def adapt_shape_and_stride(scene, base_scene, shape, stride, offset='center'):
     return computed_shape, computed_stride
 
 class TileGenerator(object):
-    def __init__(self, scene, shape=None, mapping=(), stride=None, swap_axes=False, normalize=False, copy=False):
+    def __init__(self, scene, shape=None, mapping=(), stride=None, swap_axes=False, normalize=False, copy=False, squeze_data=False):
         """
         @shape: specify the shape of the window/tile. None means the window covers the whole image
         @stride: the stride used for moving the windows
@@ -124,6 +124,7 @@ class TileGenerator(object):
         self._normalize = normalize
         self._count = 0
         self._copy = copy
+        self._squeze_data = squeze_data
         if self._stride is None and self._shape is not None:
             self._stride = self._shape[0]
 
@@ -246,8 +247,10 @@ class TileGenerator(object):
                 # # the next code block is for fixing the issue of multilabel categorical output
                 #if img_data.shape[0] == 1: #### hackish. # ToDo: fix me
                 #     img_data = img_data.reshape(img_data.shape[1:])
-                img_data = np.squeeze(img_data)
-
+                #if img_data.shape[0] == 1 or img_data.shape[-1] == 1:
+                #    img_data = np.squeeze(img_data)
+                if self._squeze_data:
+                    img_data = np.squeeze(img_data)
                 if self.swap_axes:
                     img_data = np.swapaxes(np.swapaxes(img_data, 0, 1), 1, 2)
 
@@ -379,8 +382,10 @@ class DataGenerator(object):
         self._primary_mapping = primary_mapping
 
         self._datasets = datasets
-
-        primary_mapping_type_id = self._primary_mapping['channels'][0][0]
+        if isinstance(self._primary_mapping, dict):
+            primary_mapping_type_id = self._primary_mapping['channels'][0]['type']
+        else:
+            primary_mapping_type_id = self._primary_mapping['channels'][0][0]
         first = next(self._datasets)
         scene_id, scene_data = first
 
