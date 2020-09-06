@@ -262,21 +262,14 @@ class TileGenerator(object):
             output_mapping = {}
         output_generators = {}
         input_generators = {}
-        primary_mapping = [v for k, v in input_mapping.items() if v.get("primary", False)][0]
-        primary_shape = primary_mapping['window_shape']
-        primary_stride = primary_mapping['stride']
-        primary_channels = primary_mapping['channels']
-        primary_base_scene = self._scene[primary_channels[0][0]]
 
         for mapping_name, mapping in input_mapping.items():
-            base_channel = mapping['channels'][0][0]
             target_shape, target_stride = mapping["window_shape"], mapping["stride"]
             
             input_generators[mapping_name] = self._generate_tiles_for_mapping(self._scene, mapping, target_shape,
                                                                               target_stride)
 
         for mapping_name, mapping in output_mapping.items():
-            base_channel = mapping['channels'][0][0]
             target_shape, target_stride = mapping["window_shape"], mapping["stride"]
             output_generators[mapping_name] = self._generate_tiles_for_mapping(self._scene, mapping, target_shape,
                                                                                target_stride)
