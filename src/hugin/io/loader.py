@@ -86,12 +86,12 @@ class MultiClassToBinaryCategoricalConverter(BinaryCategoricalConverter):
 class MulticlassRemappingConverter(CategoricalConverter):
     def __init__(self, *args, mapping={}, **kw):
         self._mapping = mapping
-        CategoricalConverter.__call__(self, *args, **kw)
+        CategoricalConverter.__init__(self, *args, **kw)
 
     def __call__(self, entry):
         for old_id, new_id in self._mapping.items():
             entry[entry == old_id] = new_id
-        return entry
+        return CategoricalConverter.__call__(self, entry)
 
 
 
