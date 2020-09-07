@@ -83,6 +83,18 @@ class MultiClassToBinaryCategoricalConverter(BinaryCategoricalConverter):
         entry[entry != self.class_label] = 0
         return BinaryCategoricalConverter.__call__(self, entry)
 
+class MulticlassRemappingConverter(CategoricalConverter):
+    def __init__(self, *args, mapping={}, **kw):
+        self._mapping = mapping
+        CategoricalConverter.__call__(self, *args, **kw)
+
+    def __call__(self, entry):
+        for old_id, new_id in self._mapping.items():
+            entry[entry == old_id] = new_id
+        return entry
+
+
+
 
 class ColorMapperConverter(object):
     def __init__(self, color_map):
