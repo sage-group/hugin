@@ -98,6 +98,21 @@ class MulticlassRemappingConverter(CategoricalConverter):
             entry[entry == old_id] = new_id
         return CategoricalConverter.__call__(self, entry)
 
+class MulticlassSparseRemapping(object):
+    def __init__(self, mapping={}):
+        if isinstance(mapping, dict):
+            self._mapping = mapping.items()
+        elif isinstance(mapping, list) or isinstance(mapping, tuple):
+            self._mapping = mapping
+        else:
+            raise ValueError("Unsupported format for mapping. Should be list, tuple or dictionary")
+
+    def __call__(self, entry):
+        for old_id, new_id in self._mapping:
+            entry[entry == old_id] = new_id
+        return entry
+
+
 
 
 
