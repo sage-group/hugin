@@ -85,7 +85,12 @@ class MultiClassToBinaryCategoricalConverter(BinaryCategoricalConverter):
 
 class MulticlassRemappingConverter(CategoricalConverter):
     def __init__(self, *args, mapping={}, **kw):
-        self._mapping = mapping
+        if isinstance(mapping, dict):
+            self._mapping = mapping.items()
+        elif isinstance(mapping, list) or isinstance(mapping, tuple):
+            self._mapping = mapping
+        else:
+            raise ValueError("Unsupported format for mapping. Should be list, tuple or dictionary")
         CategoricalConverter.__init__(self, *args, **kw)
 
     def __call__(self, entry):
