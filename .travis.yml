@@ -1,8 +1,18 @@
 language: python
+arch:
+  - amd64
+  - ppc64le
+  - arm64
 matrix:
   include:
     - name: "Python 3.7 on Bionic Linux"
       python: 3.7
+      dist: bionic
+      env:
+        - PIP_CMD=pip3
+        - PYTHON=python3
+    - name: "Python 3.6 on Bionic Linux"
+      python: 3.6
       dist: bionic
       env:
         - PIP_CMD=pip3
@@ -17,12 +27,6 @@ matrix:
 #      env:
 #        - PIP_CMD=pip3
 #        - PYTHON=python3
-    - name: "Python 3.6 on Bionic Linux"
-      python: 3.6
-      dist: bionic
-      env:
-        - PIP_CMD=pip3
-        - PYTHON=python3
 deploy:
   provider: pypi
   skip_existing: true
