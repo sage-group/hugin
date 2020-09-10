@@ -3,14 +3,14 @@ arch:
   - amd64
   - ppc64le
   - arm64
+before_install:
+  - sudo apt-get update
+  - sudo apt-get -y install build-essential libgdal-dev
 matrix:
   include:
     - name: "Python 3.7 on Bionic Linux"
       python: 3.7
       dist: bionic
-      before_install:
-        - sudo apt-get update
-        - sudo apt-get -y install build-essential libgdal-dev
     - name: "Python 3.6 on Bionic Linux"
       python: 3.6
       dist: bionic
