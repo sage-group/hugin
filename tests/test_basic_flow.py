@@ -15,7 +15,6 @@ from hugin.io.loader import BinaryCategoricalConverter
 #@pytest.fixture
 #def small_generated_filesystem_loader():
 #    return generate_filesystem_loader(num_images=4, width=500, height=510)
-
 @pytest.fixture
 def mapping():
     mapping_conf = {
@@ -84,8 +83,8 @@ def raster_predictors(mapping):
             stride_size=256,
             window_size=(256, 256),
             mapping=mapping,
-            #prediction_merger=AverageMerger,
-            prediction_merger=NullMerger,
+            prediction_merger=AverageMerger,
+            # prediction_merger=NullMerger,
             post_processors=[]
     )
 
@@ -93,26 +92,26 @@ def raster_predictors(mapping):
 
 # @pytest.mark.skipif(not runningInCI(), reason="Skipping running locally as it might be too slow")
 def test_identity_complete_flow(generated_filesystem_loader, mapping, netCDF_mapping):
-    # _test_identity_training(generated_filesystem_loader, IdentityModel, mapping)
-    #
-    # ### Fix Issue #6
-    # no_primary_mapping = deepcopy(mapping)
-    # del no_primary_mapping["inputs"]["input_1"]["primary"]
-    # _test_identity_training(generated_filesystem_loader, IdentityModel, no_primary_mapping)
-    # ### End Issue #6
-    #
+    _test_identity_training(generated_filesystem_loader, IdentityModel, mapping)
+
+    ### Fix Issue #6
+    no_primary_mapping = deepcopy(mapping)
+    del no_primary_mapping["inputs"]["input_1"]["primary"]
+    _test_identity_training(generated_filesystem_loader, IdentityModel, no_primary_mapping)
+    ### End Issue #6
+
     new_mapping = mapping.copy()
     del new_mapping['target']
-    # _test_identity_prediction(generated_filesystem_loader, IdentityModel, new_mapping)
-    # _test_identity_prediction_avgmerger(generated_filesystem_loader, IdentityModel, new_mapping)
-    # _test_identity_avg_prediction(generated_filesystem_loader, IdentityModel, new_mapping)
-    #
-    # _test_identity_training(generated_filesystem_loader, IdentityModel, netCDF_mapping)
+    _test_identity_prediction(generated_filesystem_loader, IdentityModel, new_mapping)
+    _test_identity_prediction_avgmerger(generated_filesystem_loader, IdentityModel, new_mapping)
+    _test_identity_avg_prediction(generated_filesystem_loader, IdentityModel, new_mapping)
+
+    _test_identity_training(generated_filesystem_loader, IdentityModel, netCDF_mapping)
     prediction_netcdf_mapping = netCDF_mapping.copy()
     del prediction_netcdf_mapping['target']
     _test_identity_prediction(generated_filesystem_loader, IdentityModel, prediction_netcdf_mapping)
-    # _test_identity_prediction_avgmerger(generated_filesystem_loader, IdentityModel, netCDF_mapping)
-    # _test_identity_avg_prediction(generated_filesystem_loader, IdentityModel, netCDF_mapping)
+    _test_identity_prediction_avgmerger(generated_filesystem_loader, IdentityModel, prediction_netcdf_mapping)
+    _test_identity_avg_prediction(generated_filesystem_loader, IdentityModel, prediction_netcdf_mapping)
 
 
 def _test_identity_training(loader, model, mapping):
@@ -147,19 +146,13 @@ def _test_identity_training(loader, model, mapping):
             validation_loader.loop = loop_validation_loader_old
 
 
-def _get_input_and_prediction_data(loader, dest_tmpdir):
+def _get_input_and_prediction_data(loader, dest_tmpdir, input_type):
     for scene in loader:
-        # it = 'RGB'
-        it = 'NCDF'
-        input_file = scene[1][it]
+        input_file = scene[1][input_type]
         input_data = input_file.read()
 
-        if it == 'RGB':
-            prediction = os.path.join(dest_tmpdir,
-                                      os.path.split(input_file.name)[-1].replace('_RGB', ''))
-        elif it == 'NCDF':
-            prediction = os.path.join(dest_tmpdir,
-                                      os.path.split(input_file.name)[-1].replace('_NCDF', '').replace('.nc', '.tiff'))
+        prediction = os.path.join(dest_tmpdir,
+                                  os.path.split(input_file.name)[-1].replace(f'_{input_type}', ''))
 
         with rasterio.open(prediction) as prediction_file:
             prediction_data = prediction_file.read()
@@ -177,6 +170,7 @@ def _test_identity_prediction(loader, model, mapping):
             stride_size=256,
             window_size=(256, 256),
             mapping=mapping,
+            # prediction_merger=AverageMerger,
             prediction_merger=NullMerger,
             post_processors=[]
         )
@@ -195,7 +189,10 @@ def _test_identity_prediction(loader, model, mapping):
             raster_saver.flow_prediction_from_source(dataset_loader, raster_predictor)
 
             dataset_loader.reset()
-            for input_data, prediction_data in _get_input_and_prediction_data(dataset_loader, dest_tmpdir):
+            for input_data, prediction_data in _get_input_and_prediction_data(dataset_loader, dest_tmpdir, "RGB"):
+                np.testing.assert_array_equal(input_data, prediction_data)
+
+            for input_data, prediction_data in _get_input_and_prediction_data(dataset_loader, dest_tmpdir, "NCDF"):
                 np.testing.assert_array_equal(input_data, prediction_data)
 
 
@@ -227,8 +224,10 @@ def _test_identity_prediction_avgmerger(loader, model, mapping):
             raster_saver.flow_prediction_from_source(dataset_loader, raster_predictor)
 
             dataset_loader.reset()
-            for input_data, prediction_data in _get_input_and_prediction_data(dataset_loader, dest_tmpdir):
-                #np.allclose(input_data, prediction_data, 1e-05, 1e-06)
+            for input_data, prediction_data in _get_input_and_prediction_data(dataset_loader, dest_tmpdir, 'RGB'):
+                np.allclose(input_data, prediction_data)
+
+            for input_data, prediction_data in _get_input_and_prediction_data(dataset_loader, dest_tmpdir, 'NCDF'):
                 np.allclose(input_data, prediction_data)
 
 
@@ -274,6 +273,10 @@ def _test_identity_avg_prediction(loader, model, mapping):
             raster_saver.flow_prediction_from_source(dataset_loader, avg_predictor)
 
             dataset_loader.reset()
-            for input_data, prediction_data in _get_input_and_prediction_data(dataset_loader, dest_tmpdir):
+            for input_data, prediction_data in _get_input_and_prediction_data(dataset_loader, dest_tmpdir, 'RGB'):
+                np.testing.assert_array_equal((input_data + input_data) / 2.0,
+                                              prediction_data)
+
+            for input_data, prediction_data in _get_input_and_prediction_data(dataset_loader, dest_tmpdir, 'NCDF'):
                 np.testing.assert_array_equal((input_data + input_data) / 2.0,
                                               prediction_data)

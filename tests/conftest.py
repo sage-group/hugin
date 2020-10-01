@@ -126,6 +126,8 @@ class GenerateFileSystemLoader():
                               os.path.join(tempdir_name, file),
                               os.path.join(tempdir_name, _outf)]).wait()
 
+        # subprocess.Popen(['cp', '-r', tempdir_name, '/home/alex/temp/'])
+
         with open(sgname, 'w') as dst_geojson:
             dst_geojson.write(json.dumps(single_geojson))
 
