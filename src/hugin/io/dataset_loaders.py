@@ -35,6 +35,9 @@ import pickle
 from geopandas import GeoDataFrame
 from rasterio import RasterioIOError, MemoryFile
 from rasterio.io import DatasetReader
+from rioxarray.rioxarray import RasterDataset
+
+from hugin.io.io_layer import ComponentFactory, Component
 
 from hugin.engine.core import RasterGenerator
 from hugin.tools.IOUtils import IOUtils
@@ -290,7 +293,7 @@ class FileLoader(BaseLoader):
             filter = self._filter
 
         close_file = True
-        log.info("Updateing datasets from file list: %s", self._input_source)
+        log.info("Updating datasets from file list: %s", self._input_source)
         if hasattr(self._input_source, 'read'):
             input_file = self._input_source
             close_file = False
@@ -359,6 +362,7 @@ class DatasetGenerator(object):
         self.loop = loop
         self._cache_data = _cache_data
         self.randomise_on_loop = randomise_on_loop # Reshuffle data after loop
+        self._component_factory = ComponentFactory()
         if self._cache_data:
             self._temp_dir = mkdtemp("cache", "hugin")
 
@@ -413,11 +417,9 @@ class DatasetGenerator(object):
         new_components = {}
         cache_data = self._cache_data
         use_tensorflow_io = False
+        # ToDo: this will probably need some refactoring to be done
         for component_name, component_path_entry in entry_components.items():
-            if isinstance(component_path_entry, (RasterGenerator, GeoDataFrame, MemoryFile)):
-                new_components[component_name] = component_path_entry
-                continue
-            elif isinstance(component_path_entry, GeoDataFrame):
+            if isinstance(component_path_entry, (RasterGenerator, GeoDataFrame, MemoryFile, RasterDataset, Component)):
                 new_components[component_name] = component_path_entry
                 continue
             elif isinstance(component_path_entry, DatasetReader):
@@ -474,12 +476,4 @@ class DatasetGenerator(object):
         return entry_name, new_components
 
     def get_component_file_descriptor(self, file_path):
-        try:
-            return rasterio.open(file_path)
-        except RasterioIOError:
-            try:
-                return gp.read_file(file_path)
-            except DriverError as e:
-                df = gp.GeoDataFrame()
-                df['geometry'] = ''
-                return df
+        return self._component_factory.get_new_object(file_path)

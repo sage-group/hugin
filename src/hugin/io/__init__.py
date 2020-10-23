@@ -17,3 +17,4 @@ __license__ = \
 
 from .loader import TileGenerator, DataGenerator, ThreadedDataGenerator, CategoricalConverter
 from .dataset_loaders import FileLoader, FileSystemLoader, DatasetGenerator
+from .io_layer import ComponentFactory, Component, NetCDFComponent, RasterComponent, GeoJSONComponent

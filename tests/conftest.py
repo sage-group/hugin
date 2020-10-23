@@ -1,6 +1,7 @@
 import json
 import os
 import random
+import subprocess
 from tempfile import TemporaryDirectory
 
 import numpy as np
@@ -67,9 +68,9 @@ class GenerateFileSystemLoader():
                 if color == match_color:
                     data_mask[rr, cc] = 1
 
-            fname = os.path.join(tempdir_name, "TEST_RGB_{}.tiff".format(imgidx + 1))
-            mname = os.path.join(tempdir_name, "TEST_GTI_{}.tiff".format(imgidx + 1))
-            gname = os.path.join(tempdir_name, "TEST_GT_{}.geojson".format(imgidx + 1))
+            fname = os.path.join(tempdir_name, f"TEST_RGB_{imgidx + 1}.tiff")
+            mname = os.path.join(tempdir_name, f"TEST_GTI_{imgidx + 1}.tiff")
+            gname = os.path.join(tempdir_name, f"TEST_GT_{imgidx + 1}.geojson")
 
             res = 0.5
             transform = from_origin(coords[0], coords[1], res, res)
@@ -83,7 +84,7 @@ class GenerateFileSystemLoader():
                 driver='GTiff',
                 dtype=data.dtype,
                 transform=transform,
-                crs={'init': 'epsg:3857'},
+                crs={'init': 'epsg:4326'},
             )
             gti_image = rasterio.open(
                 mname,
@@ -96,13 +97,13 @@ class GenerateFileSystemLoader():
                 transform=transform,
                 compress='none',
                 tiled=True,
-                crs={'init': 'epsg:3857'},
+                crs={'init': 'epsg:4326'},
             )
 
             for i in range(0, data.shape[-1]):
                 rgb_image.write(data[:, :, i], i + 1)
-            gti_image.write(data_mask, 1)
 
+            gti_image.write(data_mask, 1)
             gti_image.close()
             rgb_image.close()
 
@@ -118,11 +119,20 @@ class GenerateFileSystemLoader():
                 with open(gname, 'w') as dst_geojson:
                     dst_geojson.write(json.dumps(features_col))
 
+        for file in filter(lambda x: 'RGB' in x, os.listdir(tempdir_name)):
+            _outf = file.replace('.tiff', '.nc').replace('RGB', 'NCDF')
+
+            subprocess.Popen(['gdal_translate', '-of', 'netCDF',
+                              os.path.join(tempdir_name, file),
+                              os.path.join(tempdir_name, _outf)]).wait()
+
+        # subprocess.Popen(['cp', '-r', tempdir_name, '/home/alex/temp/'])
+
         with open(sgname, 'w') as dst_geojson:
             dst_geojson.write(json.dumps(single_geojson))
 
         base_kwargs = {
-            'data_pattern': r"(?P<name>[0-9A-Za-z]+)_(?P<SECOND>[A-Za-z0-9]+)_(?P<THIRD>[A-Za-z0-9]+)\.(tiff|geojson)$",
+            'data_pattern': r"(?P<name>[0-9A-Za-z]+)_(?P<SECOND>[A-Za-z0-9]+)_(?P<THIRD>[A-Za-z0-9]+)\.(tiff|geojson|nc)$",
             'id_format': "{name}_{THIRD}",
             'type_format': "{SECOND}",
             'input_source': tempdir_name,
@@ -135,7 +145,6 @@ class GenerateFileSystemLoader():
         else:
             base_kwargs['dynamic_types'] = {'GENERATED_GROUNDTRUTH': RasterFromShapesGenerator(base_component='RGB',
                                                                                                shape_input=sgname)}
-
 
         loader = FileSystemLoader(**base_kwargs)
         loader.__temp_input_directory = tempdir
