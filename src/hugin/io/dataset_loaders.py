@@ -80,6 +80,9 @@ def save_persistence_file(file_name, persist_data):
         raise NotImplementedError("Unsupported persistence format")
 
 
+class ArrayLoader(object):
+    pass
+
 class BaseLoader(object):
 
     def __init__(self,

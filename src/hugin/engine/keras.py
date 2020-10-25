@@ -1,8 +1,9 @@
 import os
 from logging import getLogger
 
-from keras.callbacks import ModelCheckpoint
-from keras.utils import multi_gpu_model
+from tensorflow.keras.utils import multi_gpu_model
+from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.models import load_model
 
 from hugin.engine.core import RasterModel
 from hugin.tools.callbacks import CSVLogger
@@ -90,7 +91,6 @@ class KerasModel(RasterModel):
 
     def __load_model(self):
         import tensorflow as tf
-        from keras.models import load_model
         log.info("Loading keras model from %s", self.model_path)
         if not self.load_only_weights:
             if self.enable_multi_gpu:
@@ -108,19 +108,26 @@ class KerasModel(RasterModel):
         log.info("Finished loading")
         return self.model
 
-    def __create_model(self):
+    def __create_model(self, train_data=None):
         import tensorflow as tf
         if self.enable_multi_gpu:
             with tf.device('/cpu:0'):
-                return self.__create_model_impl()
+                return self.__create_model_impl(train_data)
         else:
-            return self.__create_model_impl()
+            return self.__create_model_impl(train_data)
 
-    def __create_model_impl(self):
+    def __extract_shapes(self, spec):
+        pass
+
+    def __create_model_impl(self, train_data):
         log.info("Building model")
         model_builder_options = self.model_builder_options
         if model_builder_options.get('input_shapes') is None:
-            model_builder_options['input_shapes'] = self.input_shapes
+            if self.input_shapes is None:
+                shapes = train_data.get_input_shapes()
+                model_builder_options["input_shapes"] = shapes
+            else:
+                model_builder_options['input_shapes'] = self.input_shapes
         if model_builder_options.get('output_shapes') is None:
             model_builder_options['output_shapes'] = self.output_shapes
         model = self.model_builder(**model_builder_options)
@@ -146,7 +153,7 @@ class KerasModel(RasterModel):
             log.info("Loading existing model")
             model = self.__load_model()
         else:
-            model = self.__create_model()
+            model = self.__create_model(train_data)
             if self.enable_multi_gpu:
                 log.info("Using Keras Multi-GPU Training")
                 gpus = self.num_gpus

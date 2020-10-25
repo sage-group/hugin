@@ -616,8 +616,6 @@ class DataGenerator(object):
 
             yield (self._flaten_simple_input(in_arrays), self._flaten_simple_input(out_arrays))
 
-
-
 class ThreadedDataGenerator(threading.Thread):
     def __init__(self, data_generator, queue_size=None):
         self._data_generator = data_generator

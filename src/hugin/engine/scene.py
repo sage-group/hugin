@@ -8,7 +8,7 @@ import rasterio
 
 from logging import getLogger
 
-from hugin.io import ThreadedDataGenerator
+from hugin.io import ThreadedDataGenerator, ZarrArrayLoader
 from tempfile import TemporaryFile, NamedTemporaryFile
 
 from hugin.engine.core import metric_processor
@@ -124,6 +124,43 @@ class BaseSceneModel:
     @postprocessor
     def predict_scene_proba(self, *args, **kwargs):
         raise NotImplementedError()
+
+class ArrayModel(BaseSceneModel):
+    def __init__(self,
+                 name : str,
+                 model, *args, **kwargs):
+        super(ArrayModel, self).__init__(*args, **kwargs)
+
+        instance_path = ".".join([self.__module__, self.__class__.__name__])
+        self.name = "%s[%s]:%s" % (instance_path, name if name is not None else self.__hash__(), model.name)
+        self.model_name = name if name is not None else self.__hash__()
+        self.model = model
+
+
+class ArrayModelTrainer(ArrayModel):
+    def __init__(self, *args, **kwargs):
+        super(ArrayModelTrainer, self).__init__(*args, **kwargs)
+
+    #
+    # ToDo: the next method and the one from RasterSceneTrainer should go to a parent class
+    #
+    def save(self, destination : str = None):
+        destination = destination if destination is not None else self.destination
+        if not os.path.exists(destination):
+            os.makedirs(destination)
+        final_destination = os.path.join(destination, self.model.model_name)
+        self.model.save(final_destination)
+
+    def train(self, data_source : ZarrArrayLoader):
+        training = data_source.get_training(self.model.batch_size)
+        validation = data_source.get_validation(self.model.batch_size)
+        if self.model.destination is None:
+            self.model.destination = self.destination
+        options = {}
+        log.info("Running training from %s", self.model_name)
+        self.model.fit_generator(training, validation, **options)
+
+    
 
 class CoreScenePredictor(BaseSceneModel):
     def __init__(self, predictor,
