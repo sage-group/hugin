@@ -4,7 +4,6 @@ from setuptools import find_packages
 from setuptools import setup
 
 REQUIRED_PACKAGES = [
-    'Keras',
     'tensorflow',
     'geojson',
     'rasterio',
@@ -13,7 +12,6 @@ REQUIRED_PACKAGES = [
     'geopandas',
     'Shapely',
     'Fiona',
-    'h5py',
     'backoff',
     'matplotlib',
     'scikit-learn',

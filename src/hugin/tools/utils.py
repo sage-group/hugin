@@ -18,7 +18,8 @@ __license__ = \
 import importlib
 from logging import getLogger
 
-import keras.backend as K
+#import keras.backend as K
+from tensorflow.keras import backend as K
 import numpy as np
 import tensorflow as tf
 from sklearn.metrics import cohen_kappa_score, accuracy_score, average_precision_score
@@ -99,7 +100,45 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
     def __call__(self, y_true, y_pred, sample_weight=None):
         y_pred = tf.argmax(y_pred, axis=-1)
         return super().__call__(y_true, y_pred, sample_weight=sample_weight)
-        
+
+class MultilabelMeanIOU(tf.keras.metrics.MeanIoU):
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        return super().update_state(tf.argmax(y_true, axis=-1), tf.argmax(y_pred, axis=-1), sample_weight)
+
+class MultilabelAUC(tf.keras.metrics.AUC):
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        return super().update_state(tf.argmax(y_true, axis=-1), tf.argmax(y_pred, axis=-1), sample_weight)
+
+
+class UpdatedMeanIoU(tf.keras.metrics.MeanIoU):
+    def __init__(self,
+               y_true=None,
+               y_pred=None,
+               num_classes=None,
+               name=None,
+               dtype=None):
+        super(UpdatedMeanIoU, self).__init__(num_classes = num_classes,name=name, dtype=dtype)
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        y_pred = tf.math.argmax(y_pred, axis=-1)
+        return super().update_state(y_true, y_pred, sample_weight)
+
+
+### From: https://www.gitmemory.com/issue/tensorflow/tensorflow/33825/547758663
+class InTopK(tf.keras.metrics.Mean):
+    def __init__(self, k, name='in_top_k', **kwargs):
+        super(InTopK, self).__init__(name=name, **kwargs)
+        self._k = k
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        matches = tf.nn.in_top_k(
+            # flatten tensors
+            tf.reshape(tf.cast(y_true, tf.int32), [-1]),
+            tf.reshape(y_pred, [-1, y_pred.shape[-1]]),
+            k=self._k)
+
+        return super(InTopK, self).update_state(
+            matches, sample_weight=sample_weight)
 
 def kappa_scorer(y_true, y_pred):
     '''

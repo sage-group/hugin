@@ -19,8 +19,8 @@ from logging import getLogger
 
 import os
 import tempfile
-from keras.callbacks import CSVLogger as KerasCSVLogger
-from keras.callbacks import ModelCheckpoint as KerasModelCheckpoint
+from tensorflow.keras.callbacks import CSVLogger as KerasCSVLogger
+from tensorflow.keras.callbacks import ModelCheckpoint as KerasModelCheckpoint
 from tensorflow.python.lib.io import file_io
 
 log = getLogger(__name__)

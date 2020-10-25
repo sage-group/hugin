@@ -4,6 +4,7 @@ from logging import getLogger
 
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+from traitlets import HasTraits, Unicode, observe
 
 log = getLogger(__name__)
 
@@ -75,15 +76,15 @@ class CategoricalConverter(object):
         return prediction.reshape(prediction.shape + (1,))
 
 
-class RasterModel(object):
+class RasterModel(HasTraits):
+    base_directory = Unicode(allow_none=True)
     def __init__(self,
                  name=None,
                  batch_size=1,
                  swap_axes=True,
                  input_shapes=None,
                  output_shapes=None,
-                 # input_shape=None,
-                 # output_shape=None
+                 base_directory=None
                  ):
         """Base model object handling prediction
 
@@ -95,7 +96,7 @@ class RasterModel(object):
         instance_path = ".".join([self.__module__, self.__class__.__name__])
         self.name = "%s[%s]" % (instance_path, name if name is not None else self.__hash__())
         self.model_name = name if name is not None else self.__hash__()
-
+        self.base_directory = base_directory
         self.batch_size = batch_size
         self.swap_axes = swap_axes
         self.input_shapes = input_shapes

@@ -1,18 +1,26 @@
 import re
 import os
 import math
+import threading
+from concurrent.futures.thread import ThreadPoolExecutor
+from traitlets import HasTraits, Unicode, observe, Dict
+
+import fsspec
+import tqdm
 
 import h5py
 import numpy as np
-import rasterio
+#import rasterio
+import concurrent.futures
+import zarr
+from urllib.parse import urlparse, parse_qs
 
 from logging import getLogger
 
-from hugin.io import ThreadedDataGenerator
+from hugin.io import ThreadedDataGenerator, ZarrArrayLoader
 from tempfile import TemporaryFile, NamedTemporaryFile
 
-from hugin.engine.core import metric_processor
-from hugin.io.loader import CategoricalConverter as TrainingCategoricalConverter
+from hugin.engine.core import metric_processor, RasterModel
 from hugin.io.loader import NullFormatConverter
 from .core import NullMerger, postprocessor
 from ..io import DataGenerator, DatasetGenerator
@@ -103,8 +111,8 @@ class MultipleSceneModel:
             log.info("No validation data")
 
         options = {}
-        if self.predictor.destination is None:
-            self.predictor.destination = self.destination
+        if self.predictor.base_directory is None:
+            self.predictor.base_directory = self.destination
 
         if self.threaded:
             log.info("Using threaded data generator")
@@ -114,16 +122,100 @@ class MultipleSceneModel:
         self.predictor.fit_generator(train_data, validation_data, **options)
         log.info("Training completed")
 
-class BaseSceneModel:
-    def __init__(self, post_processors=None, pre_processors=None, metrics=None, gti_component=None):
+class BaseSceneModel(HasTraits):
+    base_directory = Unicode(allow_none=True)
+    def __init__(self, base_directory=None, post_processors=None, pre_processors=None, metrics=None, gti_component=None):
         self.post_processors = post_processors
         self.pre_processors = pre_processors
         self.metrics = metrics
         self.gti_component=gti_component
+        self.base_directory = base_directory
 
     @postprocessor
     def predict_scene_proba(self, *args, **kwargs):
         raise NotImplementedError()
+
+
+class ArrayModel(BaseSceneModel):
+    def __init__(self,
+                 name : str,
+                 model : RasterModel,
+                 *args, **kwargs):
+        super(ArrayModel, self).__init__(*args, **kwargs)
+
+        instance_path = ".".join([self.__module__, self.__class__.__name__])
+        self.name = "%s[%s]:%s" % (instance_path, name if name is not None else self.__hash__(), model.name)
+        self.model_name = name if name is not None else self.__hash__()
+        self.model = model
+
+    @observe('base_directory')
+    def _propagate_change_to_model(self, change):
+        new_value = change['new']
+        if new_value is None:
+            return
+        owner = change['owner']
+        log.debug("Updating model base path to: %s", new_value)
+        new_path = os.path.join(new_value, owner.model.model_name)
+        owner.model.base_directory = new_path
+
+
+class ArrayModelTrainer(ArrayModel):
+    def __init__(self, *args, **kwargs):
+        super(ArrayModelTrainer, self).__init__(*args, **kwargs)
+
+    #
+    # ToDo: the next method and the one from RasterSceneTrainer should go to a parent class
+    #
+    def save(self, destination : str = None):
+        destination = destination if destination is not None else self.destination
+        if not os.path.exists(destination):
+            os.makedirs(destination)
+        final_destination = os.path.join(destination, self.model.model_name)
+        self.model.save(final_destination)
+
+    def train(self, data_source : ZarrArrayLoader):
+        training = data_source.get_training(self.model.batch_size)
+        validation = data_source.get_validation(self.model.batch_size)
+        class_weights = data_source.get_class_weights()
+        sample_weights = data_source.get_sample_weights()
+        if self.model.base_directory is None:
+            self.model.base_directory = self.base_directory
+        options = {}
+        log.info("Running training from %s", self.model_name)
+
+        if sample_weights is not None:
+            log.warning("Currently Tensorflow does not support specifying the wights and they are supposed to be inluced in the generator/sequence. IGNORING")
+            sample_weights = None
+
+        if sample_weights is None:
+            pass
+        elif isinstance(sample_weights, (np.ndarray, np.generic)):
+            pass
+        else:
+            raise NotImplementedError()
+
+        if class_weights is None:
+            pass
+        elif isinstance(class_weights, (np.ndarray, np.generic)):
+            weights = {}
+            for i in range(0, len(class_weights)):
+                weights[i] = class_weights[i]
+            class_weights = weights
+        elif isinstance(class_weights, dict):
+            pass
+        else:
+            raise NotImplementedError("Unsupported representation for class weights: {}".format(type(class_weights)))
+        self.model.fit_generator(training, validation, class_weights, sample_weights, **options)
+
+class ArrayModelPredictor(ArrayModel):
+    def __init__(self, *args, **kwargs):
+        super(ArrayModelPredictor, self).__init__(*args, **kwargs)
+
+    def predict(self, data_source : ZarrArrayLoader):
+        result = self.model.predict(data_source)
+        return result
+
+    
 
 class CoreScenePredictor(BaseSceneModel):
     def __init__(self, predictor,
@@ -365,17 +457,14 @@ class AvgEnsembleScenePredictor(BaseEnsembleScenePredictor):
 
 
 
-class SceneExporter(object):
-    def __init__(self, destination=None, metric_destination=None):
+class SceneExporter(HasTraits):
+    destination = Unicode(allow_none=True)
+    _format_options = Dict(per_key_traits=Unicode(), default_value={})
+
+    def __init__(self, destination=None, metric_destination=None, _format_options={}):
         self.destination = destination
         self.metric_destination = metric_destination
-    @property
-    def destination(self):
-        return self._destination
-
-    @destination.setter
-    def destination(self, destination):
-        self._destination = destination
+        self._format_options = _format_options
 
     def save_scene(self, scene_id, scene_data, prediction, destination=None):
         raise NotImplementedError()
@@ -387,9 +476,117 @@ class SceneExporter(object):
             prediction, metrics = result
             self.save_scene(scene_id, scene_data, prediction)
             overall_metrics[scene_id] = metrics
-        import json
-        #print (json.dumps(overall_metrics, indent=4))
-            #print (metrics)
+
+class _Threaded_Array_Saver(threading.Thread):
+    def __init__(self, destination_array, save_q):
+        self.save_q = save_q
+        super(_Threaded_Array_Saver, self).__init__()
+
+    def run(self):
+        while True:
+            idxs = self.save_q.get()
+            if idxs is None:
+                break
+            pred_idx, dest_idx, destination_array, prediction_result = idxs
+            #log.debug(f"Saving dest_idx:{dest_idx} <-> pred_idx:{pred_idx} %s %s", destination_array.shape, prediction_result.shape)
+            destination_array[dest_idx, ...] = prediction_result[pred_idx, ...]
+            #log.debug(f"Done saving {dest_idx} <-> {pred_idx}")
+
+class ArrayExporter(SceneExporter):
+    destination_array = Unicode()
+    def __init__(self, zarr_dataset, destination_array, *args, **kwargs):
+        super(ArrayExporter, self).__init__(*args, **kwargs)
+        self.destination_array = destination_array
+        if self._format_options:
+            self.destination_array = self.destination_array.format(**self._format_options)
+        up = urlparse(zarr_dataset)
+        storage_options = {}
+        self.component = up.path
+        self.parent = ""
+        if not up.scheme:
+            self.zarr_dataset = zarr_dataset
+        else:
+            zarr_dataset = f"{up.scheme}://{up.netloc}"
+            self.parent = up.netloc
+            for k,v in parse_qs(up.query, keep_blank_values=True).items():
+                value = v[0] if v[0] else None
+                storage_options[k]=value
+            if up.scheme == "s3":
+                s3_endpoint = os.environ.get('S3_CUSTOM_ENDPOINT_URL')
+                if s3_endpoint:
+                    storage_options['client_kwargs'] = {
+                        'endpoint_url': s3_endpoint
+                    }
+            self.zarr_dataset = zarr_dataset
+        log.info("Export will be saved to to: %s", self.destination_array)
+        self.storage_options = storage_options
+
+    def flow_prediction_from_array_loader(self, loader, predictor):
+        batch_size = predictor.model.batch_size
+        test_data = loader.get_test(batch_size=batch_size)
+        real_length = test_data.get_real_length()
+        length = len(test_data)
+        of = fsspec.open(self.zarr_dataset, "a", **self.storage_options)
+        mapper = of.fs.get_mapper(self.parent + self.component)
+        dataset = zarr.group(store=mapper, cache_attrs=False)
+
+        if not length:
+            log.warning("No data for prediction")
+            return
+
+        destination_array = None # Created lazily
+
+        first_set = test_data[0]
+        if len (first_set) == 2: # Ground Truth Available
+            pass
+        else:
+            pass
+
+        last_idx = 0
+
+        from queue import Queue
+        save_q = Queue(maxsize=batch_size*3)
+
+        threads = []
+
+
+        for i in tqdm.tqdm(range(0, length)):
+            #print (i, batch_size, test_data[i][0]['input_1'].shape)
+            x, y = test_data[i]
+            predict_data = x
+            #log.info("Starting prediction")
+            prediction_result = predictor.predict(predict_data)
+            #log.info("Finished prediction")
+            #print (prediction_result.shape)
+            if destination_array is None:
+                prediction_shape = prediction_result.shape[1:]
+                destination_array_shape = (real_length, ) + prediction_shape
+                destination_array_chunks = (1, ) + tuple(None for _ in prediction_shape)
+                destination_array = dataset.zeros(self.destination_array,
+                                                  dtype=prediction_result.dtype,
+                                                  chunks=destination_array_chunks,
+                                                  shape=destination_array_shape,
+                                                  overwrite=True)
+                for i in range(0, batch_size * 2):
+                    log.debug(f"Starting thread {i}/{batch_size}")
+                    thread = _Threaded_Array_Saver(destination_array, save_q)
+                    thread.setDaemon(True)
+                    thread.start()
+                    threads.append(thread)
+
+            prediction_length = len(prediction_result)
+           # log.info("Saving predictions")
+            for pred_idx, dest_idx in enumerate(range(last_idx, last_idx + prediction_length)):
+                save_q.put((pred_idx, dest_idx, destination_array, prediction_result))
+            last_idx = last_idx+prediction_length
+            #log.info("Finished saving")
+        log.debug("Signaling threads we have finished")
+        for _ in threads: save_q.put(None)
+
+        log.debug("Waiting for threads to finish")
+        for th in threads:
+            th.join()
+        log.info("Prediction finished")
 
 
 class MultipleFormatExporter(SceneExporter):
@@ -420,6 +617,7 @@ class RasterIOSceneExporter(SceneExporter):
         destination = self.destination if destination is None else destination
         destination_file = os.path.join(destination, destination_file)
         log.info("Saving scene %s to %s", scene_id, destination_file)
+        import rasterio
         with rasterio.Env(**(self.rasterio_options)):
             profile = {}
             if self.srs_source_component is not None:

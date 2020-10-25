@@ -1,0 +1,91 @@
+configuration:
+  name: &modelname model1_lunetv6_full_seed1984_mfix_set6
+  workspace: "/data/bid/storage0/sage-storage/homes/eosmith/marian/models/{name}"
+  checkpoint: &resumecheckpoint 10
+
+keras_config: &kerasconfig
+  name: keras_model2
+  model_builder: hugin.models.unet.lunet6mfix:unet_rrn
+  #model_builder: eosmith.models.lstm:unet_rrn
+  swap_axes: True
+  random_seed: 1984
+  model_builder_options:
+    output_channels: 33
+  batch_size: 1
+  epochs: 9999
+  metrics:
+    - categorical_accuracy
+    - !!python/object/apply:tensorflow.keras.metrics.MeanIoU
+      kwds: { name: 'MeanIOU', num_classes: 33 }
+  loss: categorical_crossentropy
+  checkpoint:
+    monitor: val_loss
+  enable_multi_gpu: False
+  num_gpus: 2
+  use_multiprocessing: False
+  workers: 12
+  max_queue_size: 6
+  #resume_checkpoint: *resumecheckpoint
+  optimizer: !!python/object/apply:tensorflow.keras.optimizers.Adam
+    kwds:
+      lr: !!float 0.00005 # 0.0001
+      beta_1: !!float 0.9
+      beta_2: !!float 0.999
+      epsilon: !!float 1e-7
+  callbacks:
+    - !!python/object/apply:tensorflow.keras.callbacks.EarlyStopping
+      kwds:
+        monitor: 'val_loss'
+        min_delta: 0.0001
+        patience: 50
+        verbose: 1
+        mode: 'min'
+        baseline: null
+        restore_best_weights: False
+    - !!python/object/apply:tensorflow.keras.callbacks.ReduceLROnPlateau
+      kwds:
+        monitor: 'val_loss'
+        patience: 3
+        factor: !!float 0.2
+        #min_lr: !!float 0.001
+
+data_source: !!python/object/apply:hugin.io.ZarrArrayLoader
+  kwds:
+    source: "/data/bid/storage0/sage-storage/projects/eo-smith/data/full-2019-zarr-32-consolidated"
+    slice_timestamps: [4, 20]
+    inputs:
+      input_1:
+        component: "training/data"
+        standardizers: "/training/scalers/channel"
+      input_2:
+        component: "training/presence_masks"
+    targets:
+      output_1:
+        component: "training/lpis_onehot"
+        sample_reshape: [256, 256, 33]
+    split_test_index_array: "training/splits/iterative_stratification/6/test"
+    split_train_index_array: "training/splits/iterative_stratification/6/train"
+    randomise: True
+    random_seed: 1984
+
+trainer: !!python/object/apply:hugin.engine.scene.ArrayModelTrainer
+  kwds:
+   name: *modelname
+   model: !!python/object/apply:hugin.engine.keras.KerasModel
+     kwds:
+       <<: *kerasconfig
+
+predictor: !!python/object/apply:hugin.engine.scene.ArrayModelPredictor
+  kwds:
+    name: *modelname
+    model: !!python/object/apply:hugin.engine.keras.KerasModel
+      kwds:
+        <<: *kerasconfig
+
+output: !!python/object/apply:hugin.engine.scene.ArrayExporter
+  kwds:
+     zarr_dataset: 'gcs://eosmith-argi/full-2019-zarr-consolidated?token=%2Fdata%2Fbid%2Fstorage0%2Fsage-storage%2Fhomes%2Feosmith%2F.config%2Fgcloud%2Flegacy_credentials%2Fmarian.neagul%40e-uvt.ro%2Fadc.json&project=sage-experiments'
+     destination_array: "predictions/{model_name}_epoch_{epoch}"
+     _format_options:
+       model_name: *modelname
+       epoch: *resumecheckpoint
