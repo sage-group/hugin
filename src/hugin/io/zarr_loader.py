@@ -100,6 +100,7 @@ class ZarrArrayLoader(ArrayLoader):
                 dask_chunk_size = input_path.get('dask_chunk_size')
                 if dask_chunk_size is not None:
                     kwds.update(chunks=dask_chunk_size)
+                standardizers = input_path.get('standardizers')
                 shape = input_path.get('sample_reshape', None)
                 input_path = input_path.get('component')
             kwds.update(component=input_path)
