@@ -1,7 +1,10 @@
+from logging import getLogger
+
 from .dataset_loaders import ArrayLoader
 from dask.array import from_zarr, Array
 from tensorflow.keras.utils import Sequence
 
+log = getLogger(__name__)
 
 def _data_generator(source_array, batch_size : int):
     yield None
@@ -92,17 +95,24 @@ class ZarrArrayLoader(ArrayLoader):
 
         for input_name, input_path in inputs.items():
             shape = None
-            if isinstance(input_path, (tuple, list)):
-                input_path, shape = input_path
-            self.inputs[input_name] = from_zarr(source, component=input_path)
+            dask_chunk_size = 'auto'
+            if isinstance(input_path, dict) :
+                dask_chunk_size = input_path.get('dask_chunk_size', dask_chunk_size)
+                shape = input_path.get('sample_reshape', None)
+                input_path = input_path.get('component')
+            self.inputs[input_name] = from_zarr(source, component=input_path, chunks=dask_chunk_size)
+            log.info("Input %s has shape %s chunks: %s", input_name, self.inputs[input_name].shape, self.inputs[input_name].chunks)
             if shape is not None:
                 self.inputs[input_name] = self.inputs[input_name].reshape(shape)
         self.outputs = {}
         for output_name, output_path in targets.items():
             shape = None
-            if isinstance(output_path, (tuple, list)) :
-                output_path, shape = output_path
-            self.outputs[output_name] = from_zarr(source, component=output_path)
+            dask_chunk_size = 'auto'
+            if isinstance(output_path, dict) :
+                dask_chunk_size = output_path.get('dask_chunk_size', 'auto')
+                shape = output_path.get('sample_reshape', None)
+                output_path = output_path.get('component')
+            self.outputs[output_name] = from_zarr(source, component=output_path, chunks=dask_chunk_size)
             if shape is not None:
                 outer_dimension = self.outputs[output_name].shape[0]
                 self.outputs[output_name] = self.outputs[output_name].reshape((outer_dimension,) + tuple(shape))
