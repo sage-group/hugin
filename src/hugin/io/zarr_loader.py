@@ -77,7 +77,7 @@ class ArraySequence(Sequence):
         return shapes
 
 
-class ZarrArrayLoader2(ArrayLoader):
+class ZarrArrayLoader(ArrayLoader):
     def __init__(self, source, inputs: dict, targets: dict, split_test_index_array: Array = None, split_train_index_array: Array = None):
         super(ZarrArrayLoader, self).__init__()
         self.inputs = {}
