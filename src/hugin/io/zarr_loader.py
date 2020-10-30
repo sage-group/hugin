@@ -77,10 +77,19 @@ class ArraySequence(Sequence):
         return shapes
 
 
-class ZarrArrayLoader(ArrayLoader):
-    def __init__(self, source, inputs: dict, targets: dict, split_index_array: Array = None):
+class ZarrArrayLoader2(ArrayLoader):
+    def __init__(self, source, inputs: dict, targets: dict, split_test_index_array: Array = None, split_train_index_array: Array = None):
         super(ZarrArrayLoader, self).__init__()
         self.inputs = {}
+        self.split_test_index_array_path = split_test_index_array
+        self.split_train_index_array_path = split_train_index_array
+        self.split_test_index_array = None
+        self.split_train_index_array = None
+        if self.split_test_index_array_path:
+            self.split_test_index_array = from_zarr(source, component=self.split_test_index_array_path)
+        if self.split_train_index_array_path:
+            self.split_train_index_array = from_zarr(source, component=self.split_test_index_array_path)
+
         for input_name, input_path in inputs.items():
             shape = None
             if isinstance(input_path, (tuple, list)):
@@ -98,18 +107,26 @@ class ZarrArrayLoader(ArrayLoader):
                 outer_dimension = self.outputs[output_name].shape[0]
                 self.outputs[output_name] = self.outputs[output_name].reshape((outer_dimension,) + tuple(shape))
 
-        self.split_index_array_path = split_index_array
 
     def get_training(self, batch_size : int) -> _data_generator:
-        if self.split_index_array_path is not None:
-            raise NotImplementedError("No support (yet) for splits")
-        return ArraySequence(self.inputs, self.outputs, batch_size)
+
+        if self.split_train_index_array is not None:
+            inputs = { k:v[self.split_train_index_array] for k,v in self.inputs.items()}
+            outputs = {k: v[self.split_train_index_array] for k, v in self.outputs.items()}
+        else:
+            inputs = self.inputs
+            outputs = self.outputs
+        return ArraySequence(inputs, outputs, batch_size)
 
     def get_validation(self, batch_size : int) -> _data_generator:
-        if self.split_index_array_path is None:
+        if self.split_test_index_array is None:
             return None
-        data_array = self.training_array
-        return ArraySequence(data_array, batch_size)
+
+        if self.split_test_index_array is not None:
+            inputs = { k:v[self.split_test_index_array] for k,v in self.inputs.items()}
+            outputs = {k: v[self.split_test_index_array] for k, v in self.outputs.items()}
+
+        return ArraySequence(inputs, outputs, batch_size)
 
     def get_mask(self):
         raise NotImplementedError()

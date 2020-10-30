@@ -40,7 +40,11 @@ def unet_v14(
         mpadd=0,
              ):
     nr_classes = output_channels
-    input_1_height, input_1_width, input_1_channels = input_shapes["input_1"]
+    if len(input_shapes["input_1"]) == 3:
+        input_1_height, input_1_width, input_1_channels = input_shapes["input_1"]
+    else:
+        timestamps_1, input_1_height, input_1_width, input_1_channels = input_shapes["input_1"]
+
 
     inputs = Input((input_1_height, input_1_width, input_1_channels))
 
