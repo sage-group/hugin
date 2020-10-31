@@ -99,7 +99,19 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
     def __call__(self, y_true, y_pred, sample_weight=None):
         y_pred = tf.argmax(y_pred, axis=-1)
         return super().__call__(y_true, y_pred, sample_weight=sample_weight)
-        
+
+class UpdatedMeanIoU(tf.keras.metrics.MeanIoU):
+    def __init__(self,
+               y_true=None,
+               y_pred=None,
+               num_classes=None,
+               name=None,
+               dtype=None):
+        super(UpdatedMeanIoU, self).__init__(num_classes = num_classes,name=name, dtype=dtype)
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        y_pred = tf.math.argmax(y_pred, axis=-1)
+        return super().update_state(y_true, y_pred, sample_weight)
 
 def kappa_scorer(y_true, y_pred):
     '''
