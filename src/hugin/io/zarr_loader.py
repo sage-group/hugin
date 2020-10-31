@@ -77,7 +77,6 @@ class ArraySequence(Sequence):
             data = self.__selected_indices
             if self.maximum_samples is not None:
                 data = data[:self.maximum_samples]
-            else:
             return data
         else:
             data = self.__selected_indices
