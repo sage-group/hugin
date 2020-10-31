@@ -76,10 +76,8 @@ class ArraySequence(Sequence):
             self.__selected_indices = np.arange(0, len(one_array))
             data = self.__selected_indices
             if self.maximum_samples is not None:
-                log.info ("Returning subsampling")
                 data = data[:self.maximum_samples]
             else:
-                log.info ("Nu subsampling")
             return data
         else:
             data = self.__selected_indices
@@ -94,7 +92,6 @@ class ArraySequence(Sequence):
 
     def on_epoch_end(self):
         if self.randomise:
-            log.info ("Shuffling")
             np.random.shuffle(self.__selected_indices)
 
     def __len__(self):
