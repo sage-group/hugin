@@ -84,8 +84,13 @@ class ArraySequence(Sequence):
         inputs = {}
         outputs = {}
 
+        data = []
+        indices = self.selected_indices
+
         start_idx = idx * self.batch_size
         end_idx = (idx + 1) * self.batch_size
+
+        print (indices[start_idx:end_idx])
 
         for key, value in self.input_component_mapping.items():
             inputs[key]  = value[start_idx:end_idx]
