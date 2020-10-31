@@ -74,8 +74,8 @@ class ArraySequence(Sequence):
             return self.__selected_indices
 
     @selected_indices.setter
-    def selected_indices(self, v):
-        self.__selected_indices = v
+    def selected_indices(self, v : Array):
+        self.__selected_indices = np.array(v) # Convert to NumPy array to prevent issues, memory impact should be minimal as there should be a limited amount if indices
 
     def __len__(self):
         return math.ceil(len(self.selected_indices) / self.batch_size)
