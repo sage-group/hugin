@@ -113,14 +113,22 @@ class UpdatedMeanIoU(tf.keras.metrics.MeanIoU):
         y_pred = tf.math.argmax(y_pred, axis=-1)
         return super().update_state(y_true, y_pred, sample_weight)
 
-class FixedTopKCategoricalAccuracy(tf.keras.metrics.TopKCategoricalAccuracy):
-    def __init__(self, *args, **kwargs):
-        super(FixedTopKCategoricalAccuracy, self).__init__(*args, **kwargs)
+
+### From: https://www.gitmemory.com/issue/tensorflow/tensorflow/33825/547758663
+class InTopK(tf.keras.metrics.Mean):
+    def __init__(self, k, name='in_top_k', **kwargs):
+        super(InTopK, self).__init__(name=name, **kwargs)
+        self._k = k
 
     def update_state(self, y_true, y_pred, sample_weight=None):
-        y_pred = tf.math.argmax(y_pred, axis=-1)
-        y_true = tf.math.argmax(y_true, axis=-1)
-        return super().update_state(y_true, y_pred, sample_weight)
+        matches = tf.nn.in_top_k(
+            # flatten tensors
+            tf.reshape(tf.cast(y_true, tf.int32), [-1]),
+            tf.reshape(y_pred, [-1, y_pred.shape[-1]]),
+            k=self._k)
+
+        return super(InTopK, self).update_state(
+            matches, sample_weight=sample_weight)
 
 def kappa_scorer(y_true, y_pred):
     '''
