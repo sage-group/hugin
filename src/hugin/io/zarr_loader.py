@@ -94,7 +94,11 @@ class ArraySequence(Sequence):
             np.random.shuffle(self.__selected_indices)
 
     def __len__(self):
-        return math.ceil(len(self.selected_indices) / self.batch_size)
+        length = math.ceil(len(self.selected_indices) / self.batch_size)
+        log.info("Number of selected_indices: %d", self.selected_indices)
+        log.info("Batch size: %d", self.batch_size)
+        log.info("Returned length: %d", length)
+        return length
 
     def __getitem__(self, idx):
         inputs = {}
