@@ -225,7 +225,7 @@ class KerasModel(RasterModel):
                            shuffle=self.shuffle,
                            initial_epoch=self.initial_epoch)
 
-        model.fit_generator(train_data **fit_options)
+        model.fit_generator(train_data, **fit_options)
 
     def save(self, destination=None):
         log.info("Saving Keras model to %s", destination)
