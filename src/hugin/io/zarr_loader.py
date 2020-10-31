@@ -58,11 +58,15 @@ class ArraySequence(Sequence):
                  input_component_mapping: dict,
                  output_component_mapping: dict,
                  batch_size: int,
-                 selected_indices: Array = None):
+                 selected_indices: Array = None,
+                 randomise: bool = False,
+                 maximum_samples: int = None):
         self.input_component_mapping = input_component_mapping
         self.output_component_mapping = output_component_mapping
         self.selected_indices = selected_indices
         self.batch_size = batch_size if batch_size is not None else 1
+        self.randomise = randomise
+        self.maximum_samples = maximum_samples
 
     @property
     def selected_indices(self):
@@ -75,7 +79,14 @@ class ArraySequence(Sequence):
 
     @selected_indices.setter
     def selected_indices(self, v : Array):
-        self.__selected_indices = np.array(v)[:133] # Convert to NumPy array to prevent issues, memory impact should be minimal as there should be a limited amount if indices
+        data = np.array(v) # Convert to NumPy array to prevent issues, memory impact should be minimal as there should be a limited amount if indices
+        if self.maximum_samples is not None:
+            data = data[:self.maximum_samples]
+        self.__selected_indices = data
+
+    def on_epoch_end(self):
+        if self.randomise:
+            np.random.shuffle(self.__selected_indices)
 
     def __len__(self):
         return math.ceil(len(self.selected_indices) / self.batch_size)
@@ -113,13 +124,22 @@ class ArraySequence(Sequence):
 
 
 class ZarrArrayLoader(ArrayLoader):
-    def __init__(self, source, inputs: dict, targets: dict, split_test_index_array: Array = None, split_train_index_array: Array = None):
+    def __init__(self,
+                 source,
+                 inputs: dict,
+                 targets: dict,
+                 split_test_index_array: Array = None,
+                 split_train_index_array: Array = None,
+                 randomise: bool = False,
+                 maximum_samples: int = None):
         super(ZarrArrayLoader, self).__init__()
         self.inputs = {}
         self.split_test_index_array_path = split_test_index_array
         self.split_train_index_array_path = split_train_index_array
         self.split_test_index_array = None
         self.split_train_index_array = None
+        self.randomise = randomise
+        self.maximum_samples = maximum_samples
         if self.split_test_index_array_path:
             self.split_test_index_array = from_zarr(source, component=self.split_test_index_array_path)
         if self.split_train_index_array_path:
@@ -158,12 +178,12 @@ class ZarrArrayLoader(ArrayLoader):
 
 
     def get_training(self, batch_size : int) -> _data_generator:
-        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_train_index_array)
+        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_train_index_array, randomise=self.randomise, maximum_samples=self.maximum_samples)
 
     def get_validation(self, batch_size : int) -> _data_generator:
         if self.split_test_index_array is None:
             return None
-        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array)
+        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array, randomise=self.randomise, maximum_samples=self.maximum_samples)
 
     def get_mask(self):
         raise NotImplementedError()
