@@ -119,6 +119,7 @@ class FixedTopKCategoricalAccuracy(tf.keras.metrics.TopKCategoricalAccuracy):
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         y_pred = tf.math.argmax(y_pred, axis=-1)
+        y_true = tf.math.argmax(y_true, axis=-1)
         return super().update_state(y_true, y_pred, sample_weight)
 
 def kappa_scorer(y_true, y_pred):
