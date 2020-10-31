@@ -113,6 +113,14 @@ class UpdatedMeanIoU(tf.keras.metrics.MeanIoU):
         y_pred = tf.math.argmax(y_pred, axis=-1)
         return super().update_state(y_true, y_pred, sample_weight)
 
+class FixedTopKCategoricalAccuracy(tf.keras.metrics.TopKCategoricalAccuracy):
+    def __init__(self, *args, **kwargs):
+        super(Fixed, self).__init__(*args, **kwargs)
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        y_pred = tf.math.argmax(y_pred, axis=-1)
+        return super().update_state(y_true, y_pred, sample_weight)
+
 def kappa_scorer(y_true, y_pred):
     '''
     Cohen's kappa: a statistic that measures inter_annotator agreement.
