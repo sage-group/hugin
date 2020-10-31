@@ -82,7 +82,10 @@ class ArraySequence(Sequence):
                 log.info ("Nu subsampling")
             return data
         else:
-            return self.__selected_indices
+            data = self.__selected_indices
+            if self.maximum_samples is not None:
+                data = data[:self.maximum_samples]
+            return data
 
     @selected_indices.setter
     def selected_indices(self, v : Array):
