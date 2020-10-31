@@ -115,7 +115,7 @@ class UpdatedMeanIoU(tf.keras.metrics.MeanIoU):
 
 class FixedTopKCategoricalAccuracy(tf.keras.metrics.TopKCategoricalAccuracy):
     def __init__(self, *args, **kwargs):
-        super(Fixed, self).__init__(*args, **kwargs)
+        super(FixedTopKCategoricalAccuracy, self).__init__(*args, **kwargs)
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         y_pred = tf.math.argmax(y_pred, axis=-1)
