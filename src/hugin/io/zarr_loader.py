@@ -149,7 +149,8 @@ class ZarrArrayLoader(ArrayLoader):
         self.maximum_training_samples = maximum_training_samples
         self.maximum_validation_samples = maximum_validation_samples
         log.info ("Randomise: %s", self.randomise)
-        log.info ("Max samples: %s", self.maximum_samples)
+        log.info ("Max training samples: %s", self.maximum_training_samples)
+        log.info("Max validation samples: %s", self.maximum_validation_samples)
         if self.split_test_index_array_path:
             self.split_test_index_array = from_zarr(source, component=self.split_test_index_array_path)
         if self.split_train_index_array_path:
