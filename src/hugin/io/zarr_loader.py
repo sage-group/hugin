@@ -61,6 +61,7 @@ class ArraySequence(Sequence):
                  selected_indices: Array = None,
                  randomise: bool = False,
                  maximum_samples: int = None):
+
         self.input_component_mapping = input_component_mapping
         self.output_component_mapping = output_component_mapping
         self.selected_indices = selected_indices
