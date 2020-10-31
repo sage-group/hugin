@@ -95,10 +95,10 @@ class ArraySequence(Sequence):
 
     def __len__(self):
         length = math.ceil(len(self.selected_indices) / self.batch_size)
-        log.info("Number of selected_indices: %d", self.selected_indices)
+        log.info("Number of selected_indices: %d", len(self.selected_indices))
         log.info("Batch size: %d", self.batch_size)
-        log.info("Returned length: %d", length)
-        return length
+        log.info("Returned length: %d", int(length))
+        return int(length)
 
     def __getitem__(self, idx):
         inputs = {}
@@ -157,7 +157,7 @@ class ZarrArrayLoader(ArrayLoader):
         if self.split_test_index_array_path:
             self.split_test_index_array = from_zarr(source, component=self.split_test_index_array_path)
         if self.split_train_index_array_path:
-            self.split_train_index_array = from_zarr(source, component=self.split_test_index_array_path)
+            self.split_train_index_array = from_zarr(source, component=self.split_train_index_array_path)
 
         for input_name, input_path in inputs.items():
             shape = None
