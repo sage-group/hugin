@@ -74,15 +74,16 @@ class ArraySequence(Sequence):
         if self.__selected_indices is None:
             one_array = self.input_component_mapping[list(self.input_component_mapping.keys())[0]]
             self.__selected_indices = np.arange(0, len(one_array))
-            return self.__selected_indices
+            data = self.__selected_indices
+            if self.maximum_samples is not None:
+                data = data[:self.maximum_samples]
+            return data
         else:
             return self.__selected_indices
 
     @selected_indices.setter
     def selected_indices(self, v : Array):
         data = np.array(v) # Convert to NumPy array to prevent issues, memory impact should be minimal as there should be a limited amount if indices
-        if self.maximum_samples is not None:
-            data = data[:self.maximum_samples]
         self.__selected_indices = data
 
     def on_epoch_end(self):
