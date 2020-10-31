@@ -146,8 +146,8 @@ class ZarrArrayLoader(ArrayLoader):
         self.split_train_index_array = None
         self.randomise = randomise
         self.maximum_samples = maximum_samples
-        log.info ("Randomise: ", self.randomise)
-        log.info ("Max samples: ", self.maximum_samples)
+        log.info ("Randomise: %s", self.randomise)
+        log.info ("Max samples: %s", self.maximum_samples)
         if self.split_test_index_array_path:
             self.split_test_index_array = from_zarr(source, component=self.split_test_index_array_path)
         if self.split_train_index_array_path:
