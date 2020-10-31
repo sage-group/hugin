@@ -1,4 +1,5 @@
 import math
+import numpy as np
 from logging import getLogger
 
 from .dataset_loaders import ArrayLoader
@@ -53,14 +54,31 @@ class ArrayDataGenerator(object):
         return (inputs, outputs)
 
 class ArraySequence(Sequence):
-    def __init__(self, input_component_mapping: dict, output_component_mapping: dict, batch_size: int):
+    def __init__(self,
+                 input_component_mapping: dict,
+                 output_component_mapping: dict,
+                 batch_size: int,
+                 selected_indices: Array = None):
         self.input_component_mapping = input_component_mapping
         self.output_component_mapping = output_component_mapping
+        self.selected_indices = selected_indices
         self.batch_size = batch_size if batch_size is not None else 1
 
+    @property
+    def selected_indices(self):
+        if self.__selected_indices is None:
+            one_array = self.input_component_mapping[list(self.input_component_mapping.keys())[0]]
+            self.__selected_indices = np.arange(0, len(one_array))
+            return self.__selected_indices
+        else:
+            return self.__selected_indices
+
+    @selected_indices.setter
+    def selected_indices(self, v):
+        self.__selected_indices = v
+
     def __len__(self):
-        one_array = self.input_component_mapping[list(self.input_component_mapping.keys())[0]]
-        return math.ceil(len(one_array) / self.batch_size)
+        return math.ceil(len(self.selected_indices) / self.batch_size)
 
     def __getitem__(self, idx):
         inputs = {}
