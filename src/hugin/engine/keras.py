@@ -1,9 +1,13 @@
+import math
+
 import os
 from logging import getLogger
 
 from tensorflow.keras.utils import multi_gpu_model
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.models import load_model
+from tensorflow.keras.utils import Sequence
+
 
 from hugin.engine.core import RasterModel
 from hugin.tools.callbacks import CSVLogger
@@ -136,18 +140,27 @@ class KerasModel(RasterModel):
 
     def fit_generator(self, train_data, validation_data=None):
         log.info("Training from generators")
+        fit_options = {}
         if self.steps_per_epoch is None:
-            steps_per_epoch = len(train_data) // self.batch_size
+            if isinstance(train_data, Sequence):
+                pass
+            else:
+                steps_per_epoch = math.ceil(len(train_data) / self.batch_size)
+                fit_options.update(steps_per_epoch=steps_per_epoch)
         else:
-            steps_per_epoch = self.steps_per_epoch
+            fit_options.update(steps_per_epoch=self.steps_per_epoch)
 
         if self.validation_steps_per_epoch is None:
             if validation_data is not None:
-                validation_steps_per_epoch = len(validation_data) // self.batch_size
+                if isinstance(validation_data, Sequence):
+                    pass
+                else:
+                    validation_steps_per_epoch = math.ceil(len(validation_data) / self.batch_size)
+                    fit_options.update(steps_per_epoch=validation_steps_per_epoch)
             else:
                 validation_steps_per_epoch = None
         else:
-            validation_steps_per_epoch = self.validation_steps_per_epoch
+            fit_options.update(steps_per_epoch=validation_steps_per_epoch)
 
         if os.path.exists(self.model_path):
             log.info("Loading existing model")
@@ -200,19 +213,19 @@ class KerasModel(RasterModel):
         if self.destination and validation_data is not None:
             log_destination = os.path.join(self.destination, "logs.txt")
             callbacks.append(CSVLogger(log_destination))
-        model.fit_generator(train_data,
-                            steps_per_epoch=steps_per_epoch,
-                            epochs=self.epochs,
-                            verbose=self.verbose,
-                            callbacks=callbacks,
-                            validation_data=validation_data,
-                            validation_steps=validation_steps_per_epoch,
-                            class_weight=self.class_weight,
-                            max_queue_size=self.max_queue_size,
-                            workers=self.workers,
-                            use_multiprocessing=self.use_multiprocessing,
-                            shuffle=self.shuffle,
-                            initial_epoch=self.initial_epoch)
+
+        fit_options.update(epochs=self.epochs,
+                           verbose=self.verbose,
+                           callbacks=callbacks,
+                           validation_data=validation_data,
+                           class_weight=self.class_weight,
+                           max_queue_size=self.max_queue_size,
+                           workers=self.workers,
+                           use_multiprocessing=self.use_multiprocessing,
+                           shuffle=self.shuffle,
+                           initial_epoch=self.initial_epoch)
+
+        model.fit_generator(train_data **fit_options)
 
     def save(self, destination=None):
         log.info("Saving Keras model to %s", destination)

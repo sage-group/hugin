@@ -1,3 +1,4 @@
+import math
 from logging import getLogger
 
 from .dataset_loaders import ArrayLoader
@@ -59,7 +60,7 @@ class ArraySequence(Sequence):
 
     def __len__(self):
         one_array = self.input_component_mapping[list(self.input_component_mapping.keys())[0]]
-        return len(one_array)
+        return math.ceil(len(one_array) / self.batch_size)
 
     def __getitem__(self, idx):
         inputs = {}
