@@ -137,7 +137,8 @@ class ZarrArrayLoader(ArrayLoader):
                  split_test_index_array: Array = None,
                  split_train_index_array: Array = None,
                  randomise: bool = False,
-                 maximum_samples: int = None):
+                 maximum_training_samples: int = None,
+                 maximum_validation_samples: int = None):
         super(ZarrArrayLoader, self).__init__()
         self.inputs = {}
         self.split_test_index_array_path = split_test_index_array
@@ -145,7 +146,8 @@ class ZarrArrayLoader(ArrayLoader):
         self.split_test_index_array = None
         self.split_train_index_array = None
         self.randomise = randomise
-        self.maximum_samples = maximum_samples
+        self.maximum_training_samples = maximum_training_samples
+        self.maximum_validation_samples = maximum_validation_samples
         log.info ("Randomise: %s", self.randomise)
         log.info ("Max samples: %s", self.maximum_samples)
         if self.split_test_index_array_path:
@@ -186,12 +188,12 @@ class ZarrArrayLoader(ArrayLoader):
 
 
     def get_training(self, batch_size : int) -> _data_generator:
-        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_train_index_array, randomise=self.randomise, maximum_samples=self.maximum_samples)
+        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_train_index_array, randomise=self.randomise, maximum_samples=self.maximum_training_samples)
 
     def get_validation(self, batch_size : int) -> _data_generator:
         if self.split_test_index_array is None:
             return None
-        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array, randomise=self.randomise, maximum_samples=self.maximum_samples)
+        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array, randomise=self.randomise, maximum_samples=self.maximum_validation_samples)
 
     def get_mask(self):
         raise NotImplementedError()
