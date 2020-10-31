@@ -95,9 +95,6 @@ class ArraySequence(Sequence):
 
     def __len__(self):
         length = math.ceil(len(self.selected_indices) / self.batch_size)
-        log.info("Number of selected_indices: %d", len(self.selected_indices))
-        log.info("Batch size: %d", self.batch_size)
-        log.info("Returned length: %d", int(length))
         return int(length)
 
     def __getitem__(self, idx):
@@ -151,8 +148,8 @@ class ZarrArrayLoader(ArrayLoader):
         self.randomise = randomise
         self.maximum_training_samples = maximum_training_samples
         self.maximum_validation_samples = maximum_validation_samples
-        log.info ("Randomise: %s", self.randomise)
-        log.info ("Max training samples: %s", self.maximum_training_samples)
+        log.info("Randomise: %s", self.randomise)
+        log.info("Max training samples: %s", self.maximum_training_samples)
         log.info("Max validation samples: %s", self.maximum_validation_samples)
         if self.split_test_index_array_path:
             self.split_test_index_array = from_zarr(source, component=self.split_test_index_array_path)
