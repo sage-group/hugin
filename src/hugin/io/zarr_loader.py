@@ -84,10 +84,13 @@ class ArraySequence(Sequence):
         inputs = {}
         outputs = {}
 
+        start_idx = idx * self.batch_size
+        end_idx = (idx + 1) * self.batch_size
+
         for key, value in self.input_component_mapping.items():
-            inputs[key] = value[idx * self.batch_size:(idx + 1) * self.batch_size]
+            inputs[key]  = value[start_idx:end_idx]
         for key, value in self.output_component_mapping.items():
-            outputs[key] = value[idx * self.batch_size:(idx + 1) * self.batch_size]
+            outputs[key] = value[start_idx:end_idx]
 
         return (inputs, outputs)
 
