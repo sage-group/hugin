@@ -76,10 +76,10 @@ class ArraySequence(Sequence):
             self.__selected_indices = np.arange(0, len(one_array))
             data = self.__selected_indices
             if self.maximum_samples is not None:
-                print ("Returning subsampling")
+                log.info ("Returning subsampling")
                 data = data[:self.maximum_samples]
             else:
-                print ("Nu subsampling")
+                log.info ("Nu subsampling")
             return data
         else:
             return self.__selected_indices
@@ -91,7 +91,7 @@ class ArraySequence(Sequence):
 
     def on_epoch_end(self):
         if self.randomise:
-            print ("Shuffling")
+            log.info ("Shuffling")
             np.random.shuffle(self.__selected_indices)
 
     def __len__(self):
@@ -146,8 +146,8 @@ class ZarrArrayLoader(ArrayLoader):
         self.split_train_index_array = None
         self.randomise = randomise
         self.maximum_samples = maximum_samples
-        print ("Randomise: ", self.randomise)
-        print ("Max samples: ", self.maximum_samples)
+        log.info ("Randomise: ", self.randomise)
+        log.info ("Max samples: ", self.maximum_samples)
         if self.split_test_index_array_path:
             self.split_test_index_array = from_zarr(source, component=self.split_test_index_array_path)
         if self.split_train_index_array_path:
@@ -165,7 +165,7 @@ class ZarrArrayLoader(ArrayLoader):
                 input_path = input_path.get('component')
             kwds.update(component=input_path)
             self.inputs[input_name] = from_zarr(source, **kwds)
-            log.info("Input %s has shape %s chunks: %s", input_name, self.inputs[input_name].shape, self.inputs[input_name].chunks)
+            #log.info("Input %s has shape %s chunks: %s", input_name, self.inputs[input_name].shape, self.inputs[input_name].chunks)
             if shape is not None:
                 self.inputs[input_name] = self.inputs[input_name].reshape(shape)
         self.outputs = {}
