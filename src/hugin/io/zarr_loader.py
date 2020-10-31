@@ -76,7 +76,10 @@ class ArraySequence(Sequence):
             self.__selected_indices = np.arange(0, len(one_array))
             data = self.__selected_indices
             if self.maximum_samples is not None:
+                print ("Returning subsampling")
                 data = data[:self.maximum_samples]
+            else:
+                print ("Nu subsampling")
             return data
         else:
             return self.__selected_indices
@@ -88,6 +91,7 @@ class ArraySequence(Sequence):
 
     def on_epoch_end(self):
         if self.randomise:
+            print ("Shuffling")
             np.random.shuffle(self.__selected_indices)
 
     def __len__(self):
@@ -142,6 +146,8 @@ class ZarrArrayLoader(ArrayLoader):
         self.split_train_index_array = None
         self.randomise = randomise
         self.maximum_samples = maximum_samples
+        print ("Randomise: ", self.randomise)
+        print ("Max samples: ", self.maximum_samples)
         if self.split_test_index_array_path:
             self.split_test_index_array = from_zarr(source, component=self.split_test_index_array_path)
         if self.split_train_index_array_path:
