@@ -145,24 +145,12 @@ class ZarrArrayLoader(ArrayLoader):
 
 
     def get_training(self, batch_size : int) -> _data_generator:
-
-        if self.split_train_index_array is not None:
-            inputs = { k:v[self.split_train_index_array] for k,v in self.inputs.items()}
-            outputs = {k: v[self.split_train_index_array] for k, v in self.outputs.items()}
-        else:
-            inputs = self.inputs
-            outputs = self.outputs
-        return ArraySequence(inputs, outputs, batch_size)
+        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_train_index_array)
 
     def get_validation(self, batch_size : int) -> _data_generator:
         if self.split_test_index_array is None:
             return None
-
-        if self.split_test_index_array is not None:
-            inputs = { k:v[self.split_test_index_array] for k,v in self.inputs.items()}
-            outputs = {k: v[self.split_test_index_array] for k, v in self.outputs.items()}
-
-        return ArraySequence(inputs, outputs, batch_size)
+        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array)
 
     def get_mask(self):
         raise NotImplementedError()
