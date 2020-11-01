@@ -116,7 +116,7 @@ class ArraySequence(Sequence):
             for key, value in self.input_component_mapping.items():
                 if key not in inputs:
                     inputs[key] = []
-                data = value[idx]
+                data = np.array(value[idx])
                 standardiser = self.standardisers.get(key)
                 if standardiser is not None:
                     for i in range(0, len(standardiser)):
