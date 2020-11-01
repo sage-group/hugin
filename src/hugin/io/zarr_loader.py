@@ -121,7 +121,8 @@ class ArraySequence(Sequence):
                 if standardiser is not None:
                     for i in range(0, len(standardiser)):
                         channel_standardizer = standardiser[i]
-                        data[..., i] = channel_standardizer.transform(data[..., i].reshape(-1, 1))
+                        old_shape = data[..., i].shape
+                        data[..., i] = channel_standardizer.transform(data[..., i].reshape(-1, 1)).reshape(old_shape)
                 inputs[key].append(data)
 
             for key, value in self.output_component_mapping.items():
