@@ -88,10 +88,14 @@ class ArraySequence(Sequence):
     def selected_indices(self, v : Array):
         data = np.array(v) # Convert to NumPy array to prevent issues, memory impact should be minimal as there should be a limited amount if indices
         self.__selected_indices = data
+        self.__shuffle_indices()
 
-    def on_epoch_end(self):
+    def __shuffle_indices(self):
         if self.randomise:
             np.random.shuffle(self.__selected_indices)
+
+    def on_epoch_end(self):
+        self.__shuffle_indices()
 
     def __len__(self):
         length = math.ceil(len(self.selected_indices) / self.batch_size)
@@ -141,6 +145,7 @@ class ZarrArrayLoader(ArrayLoader):
                  maximum_validation_samples: int = None):
         super(ZarrArrayLoader, self).__init__()
         self.inputs = {}
+        self.input_standardizers = {}
         self.split_test_index_array_path = split_test_index_array
         self.split_train_index_array_path = split_train_index_array
         self.split_test_index_array = None
@@ -166,6 +171,8 @@ class ZarrArrayLoader(ArrayLoader):
                 standardizers = input_path.get('standardizers')
                 shape = input_path.get('sample_reshape', None)
                 input_path = input_path.get('component')
+                if standardizers is not None:
+                    self.input_standardizers[input_name] = from_zarr(source, standardizers)
             kwds.update(component=input_path)
             self.inputs[input_name] = from_zarr(source, **kwds)
             #log.info("Input %s has shape %s chunks: %s", input_name, self.inputs[input_name].shape, self.inputs[input_name].chunks)
