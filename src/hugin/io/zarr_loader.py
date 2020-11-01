@@ -64,9 +64,9 @@ class ArraySequence(Sequence):
 
         self.input_component_mapping = input_component_mapping
         self.output_component_mapping = output_component_mapping
+        self.randomise = randomise
         self.selected_indices = selected_indices
         self.batch_size = batch_size if batch_size is not None else 1
-        self.randomise = randomise
         self.maximum_samples = maximum_samples
 
     @property
