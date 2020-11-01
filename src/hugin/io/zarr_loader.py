@@ -58,6 +58,7 @@ class ArraySequence(Sequence):
                  input_component_mapping: dict,
                  output_component_mapping: dict,
                  batch_size: int,
+                 standardisers: dict = None,
                  selected_indices: Array = None,
                  randomise: bool = False,
                  maximum_samples: int = None):
@@ -68,6 +69,7 @@ class ArraySequence(Sequence):
         self.selected_indices = selected_indices
         self.batch_size = batch_size if batch_size is not None else 1
         self.maximum_samples = maximum_samples
+        self.standardisers = standardisers
 
     @property
     def selected_indices(self):
@@ -114,7 +116,14 @@ class ArraySequence(Sequence):
             for key, value in self.input_component_mapping.items():
                 if key not in inputs:
                     inputs[key] = []
-                inputs[key].append(value[idx])
+                data = value[idx]
+                standardiser = self.standardisers.get(key)
+                if standardiser is not None:
+                    for i in range(0, len(standardiser)):
+                        channel_standardizer = standardiser[i]
+                        data[..., i] = channel_standardizer.transform(data[..., i].reshape(-1, 1))
+                inputs[key].append(data)
+
             for key, value in self.output_component_mapping.items():
                 if key not in outputs:
                     outputs[key] = []
@@ -172,7 +181,7 @@ class ZarrArrayLoader(ArrayLoader):
                 shape = input_path.get('sample_reshape', None)
                 input_path = input_path.get('component')
                 if standardizers is not None:
-                    self.input_standardizers[input_name] = from_zarr(source, standardizers)
+                    self.input_standardizers[input_name] = np.array(from_zarr(source, standardizers))
             kwds.update(component=input_path)
             self.inputs[input_name] = from_zarr(source, **kwds)
             #log.info("Input %s has shape %s chunks: %s", input_name, self.inputs[input_name].shape, self.inputs[input_name].chunks)
@@ -196,7 +205,7 @@ class ZarrArrayLoader(ArrayLoader):
 
 
     def get_training(self, batch_size : int) -> _data_generator:
-        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_train_index_array, randomise=self.randomise, maximum_samples=self.maximum_training_samples)
+        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_train_index_array, randomise=self.randomise, maximum_samples=self.maximum_training_samples, standardisers=self.input_standardizers)
 
     def get_validation(self, batch_size : int) -> _data_generator:
         if self.split_test_index_array is None:
