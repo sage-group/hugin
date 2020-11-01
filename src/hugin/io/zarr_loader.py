@@ -119,6 +119,7 @@ class ArraySequence(Sequence):
                 data = np.array(value[idx])
                 standardiser = self.standardisers.get(key)
                 if standardiser is not None:
+                    data = data.astype(np.float64)
                     for i in range(0, len(standardiser)):
                         channel_standardizer = standardiser[i]
                         old_shape = data[..., i].shape
