@@ -117,7 +117,7 @@ class ArraySequence(Sequence):
                 if key not in inputs:
                     inputs[key] = []
                 data = np.array(value[idx])
-                standardiser = self.standardisers.get(key)
+                standardiser = self.standardisers.get(key)  if self.standardisers else None
                 if standardiser is not None:
                     data = data.astype(np.float64)
                     for i in range(0, len(standardiser)):
@@ -212,7 +212,7 @@ class ZarrArrayLoader(ArrayLoader):
     def get_validation(self, batch_size : int) -> _data_generator:
         if self.split_test_index_array is None:
             return None
-        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array, randomise=self.randomise, maximum_samples=self.maximum_validation_samples)
+        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array, randomise=self.randomise, maximum_samples=self.maximum_validation_samples, standardisers=self.input_standardizers)
 
     def get_mask(self):
         raise NotImplementedError()
