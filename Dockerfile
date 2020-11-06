@@ -18,9 +18,10 @@ RUN adduser --disabled-password \
     $USER
 
 RUN apt-get install -y virtualenv
+COPY requirements.txt /tmp/requirements.txt
 RUN chown -R hugin /home/hugin/ && \
     virtualenv /home/hugin/venv && \
-    /home/hugin/venv/bin/pip install tensorflow_gpu fiona rasterio zarr gcsfs s3fs dask[array] backoff
+    /home/hugin/venv/bin/pip install -r /tmp/requirements.txt
 ENV PATH /home/hugin/venv/bin:$PATH
 COPY . /home/hugin/src
 RUN chown -R hugin /home/hugin/
@@ -31,7 +32,7 @@ RUN pwd
 RUN whoami
 RUN ls -la
 RUN /home/hugin/venv/bin/python setup.py develop
-COPY docker/entrypoint.sh /home/hugin/
+RUN cp docker/entrypoint.sh /home/hugin/
 RUN chmod +x /home/hugin/entrypoint.sh
 ENTRYPOINT /home/hugin/entrypoint.sh
 #SHELL [ "/bin/bash", "--login", "-c" ]
