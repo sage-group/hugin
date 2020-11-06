@@ -1,10 +1,12 @@
 import math
+import os
 import numpy as np
 from logging import getLogger
 
 from .dataset_loaders import ArrayLoader
 from dask.array import from_zarr, Array
 from tensorflow.keras.utils import Sequence
+from urllib.parse import urlparse, parse_qs
 
 log = getLogger(__name__)
 
@@ -101,9 +103,9 @@ class ArraySequence(Sequence):
 
 class ZarrArrayLoader(ArrayLoader):
     def __init__(self,
-                 source,
                  inputs: dict,
                  targets: dict,
+                 source=None,
                  split_test_index_array: Array = None,
                  split_train_index_array: Array = None,
                  randomise: bool = False,
@@ -119,14 +121,30 @@ class ZarrArrayLoader(ArrayLoader):
         self.randomise = randomise
         self.maximum_training_samples = maximum_training_samples
         self.maximum_validation_samples = maximum_validation_samples
+        if source is None:
+            if 'DATASOURCE_URL' not in os.environ:
+                raise TypeError("Missing source specification. Should be specified directly or as the `DATASOURCE_URL` environment variable")
+            else:
+                source = os.environ['DATASOURCE_URL']
+                log.info(f"Using storage configuration from environment file `DATASOURCE_URL`: {source}")
+        up = urlparse(source)
+        storage_options = {}
+        if not up.scheme:
+            self.source = source
+        else:
+            self.source = f"{up.scheme}://{up.netloc}/{up.path}"
+            for k,v in parse_qs(up.query, keep_blank_values=True).items():
+                value = v[0] if v[0] else None
+                storage_options[k]=value
+        self.storage_options = storage_options
         self.source = source
         log.info("Randomise: %s", self.randomise)
         log.info("Max training samples: %s", self.maximum_training_samples)
         log.info("Max validation samples: %s", self.maximum_validation_samples)
         if self.split_test_index_array_path:
-            self.split_test_index_array = from_zarr(source, component=self.split_test_index_array_path)
+            self.split_test_index_array = from_zarr(source, component=self.split_test_index_array_path, storage_options=storage_options)
         if self.split_train_index_array_path:
-            self.split_train_index_array = from_zarr(source, component=self.split_train_index_array_path)
+            self.split_train_index_array = from_zarr(source, component=self.split_train_index_array_path, storage_options=storage_options)
 
         for input_name, input_path in inputs.items():
             shape = None
@@ -139,9 +157,9 @@ class ZarrArrayLoader(ArrayLoader):
                 shape = input_path.get('sample_reshape', None)
                 input_path = input_path.get('component')
                 if standardizers is not None:
-                    self.input_standardizers[input_name] = np.array(from_zarr(source, standardizers))
+                    self.input_standardizers[input_name] = np.array(from_zarr(source, standardizers, storage_options=self.storage_options))
             kwds.update(component=input_path)
-            self.inputs[input_name] = from_zarr(source, **kwds)
+            self.inputs[input_name] = from_zarr(source, **kwds, storage_options=self.storage_options)
             if shape is not None:
                 self.inputs[input_name] = self.inputs[input_name].reshape(shape)
         self.outputs = {}
@@ -155,6 +173,7 @@ class ZarrArrayLoader(ArrayLoader):
                 shape = output_path.get('sample_reshape', None)
                 output_path = output_path.get('component')
             kwds.update(component=output_path)
+            kwds.update(storage_options=self.storage_options)
             self.outputs[output_name] = from_zarr(source, **kwds)
             if shape is not None:
                 outer_dimension = self.outputs[output_name].shape[0]
