@@ -15,6 +15,17 @@ __license__ = \
        limitations under the License.
     """
 
+import logging
+log = logging.getLogger(__name__)
 from .loader import TileGenerator, DataGenerator, ThreadedDataGenerator, CategoricalConverter
-from .dataset_loaders import FileLoader, FileSystemLoader, DatasetGenerator, ArrayLoader
-from .zarr_loader import ZarrArrayLoader
+from .dataset_loaders import FileLoader
+from .dataset_loaders import FileSystemLoader
+try:
+    from .rio_dataset_loaders import DatasetGenerator
+except ImportError:
+    log.exception("DatasetGenerator could not be imported")
+from .dataset_loaders import ArrayLoader
+try:
+    from .zarr_loader import ZarrArrayLoader
+except ImportError:
+    log.exception("ZarrArrayLoader could not be imported")

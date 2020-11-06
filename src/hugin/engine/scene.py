@@ -4,15 +4,14 @@ import math
 
 import h5py
 import numpy as np
-import rasterio
+#import rasterio
 
 from logging import getLogger
 
 from hugin.io import ThreadedDataGenerator, ZarrArrayLoader
 from tempfile import TemporaryFile, NamedTemporaryFile
 
-from hugin.engine.core import metric_processor
-from hugin.io.loader import CategoricalConverter as TrainingCategoricalConverter
+from hugin.engine.core import metric_processor, RasterModel
 from hugin.io.loader import NullFormatConverter
 from .core import NullMerger, postprocessor
 from ..io import DataGenerator, DatasetGenerator
@@ -128,7 +127,8 @@ class BaseSceneModel:
 class ArrayModel(BaseSceneModel):
     def __init__(self,
                  name : str,
-                 model, *args, **kwargs):
+                 model : RasterModel,
+                 *args, **kwargs):
         super(ArrayModel, self).__init__(*args, **kwargs)
 
         instance_path = ".".join([self.__module__, self.__class__.__name__])
@@ -159,6 +159,14 @@ class ArrayModelTrainer(ArrayModel):
         options = {}
         log.info("Running training from %s", self.model_name)
         self.model.fit_generator(training, validation, **options)
+
+class ArrayModelPredictor(ArrayModel):
+    def __init__(self, *args, **kwargs):
+        super(ArrayModelPredictor, self).__init__(*args, **kwargs)
+
+    def predict(self, data_source : ZarrArrayLoader):
+        result = self.model.predict(data_source)
+        raise NotImplementedError()
 
     
 
@@ -424,9 +432,12 @@ class SceneExporter(object):
             prediction, metrics = result
             self.save_scene(scene_id, scene_data, prediction)
             overall_metrics[scene_id] = metrics
-        import json
-        #print (json.dumps(overall_metrics, indent=4))
-            #print (metrics)
+
+    def flow_prediction_from_array_loader(self, loader, predictor):
+        test_data = loader.get_test(batch_size=1)
+        length = len(test_data)
+        prediction_result = predictor.predict(test_data)
+        print ("Flow....")
 
 
 class MultipleFormatExporter(SceneExporter):
@@ -457,6 +468,7 @@ class RasterIOSceneExporter(SceneExporter):
         destination = self.destination if destination is None else destination
         destination_file = os.path.join(destination, destination_file)
         log.info("Saving scene %s to %s", scene_id, destination_file)
+        import rasterio
         with rasterio.Env(**(self.rasterio_options)):
             profile = {}
             if self.srs_source_component is not None:

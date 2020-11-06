@@ -8,51 +8,6 @@ from tensorflow.keras.utils import Sequence
 
 log = getLogger(__name__)
 
-def _data_generator(source_array, batch_size : int):
-    yield None
-
-class ArrayDataGenerator(object):
-    def __init__(self, input_component_mapping: dict, output_component_mapping: dict, batch_size: int):
-        self.input_component_mapping = input_component_mapping
-        self.output_component_mapping = output_component_mapping
-        self.batch_size = batch_size if batch_size is not None else 1
-        self._index_iterator = self.__get_batch_indexes()
-
-    def __get_batch_indexes(self):
-        while True:
-            total_entries = len(self)
-            number_of_batches = total_entries // self.batch_size
-            remainder = total_entries % self.batch_size
-            for batch_idx in range(0, number_of_batches):
-                batch_start_idx = batch_idx*self.batch_size
-                batch_end_idx = batch_start_idx + self.batch_size
-                yield (batch_start_idx, batch_end_idx)
-            if remainder > 0:
-                yield (batch_end_idx, total_entries)
-
-    def get_input_shapes(self):
-        shapes = {}
-        for key, value in self.input_component_mapping.items():
-            shapes[key] = value.shape[1:]
-        return shapes
-
-    def __len__(self):
-        one_array = self.input_component_mapping[list(self.input_component_mapping.keys())[0]]
-        return len(one_array)
-
-    def __next__(self):
-        return self.next()
-
-    def next(self):
-        start_index, end_index = next(self._index_iterator)
-        inputs = {}
-        outputs = {}
-        for key, value in self.input_component_mapping.items():
-            inputs[key] = value[start_index:end_index, ...]
-        for key, value in self.output_component_mapping.items():
-            pass
-        return (inputs, outputs)
-
 class ArraySequence(Sequence):
     def __init__(self,
                  input_component_mapping: dict,
@@ -88,7 +43,7 @@ class ArraySequence(Sequence):
 
     @selected_indices.setter
     def selected_indices(self, v : Array):
-        data = np.array(v) # Convert to NumPy array to prevent issues, memory impact should be minimal as there should be a limited amount if indices
+        data = np.array(v) if v is not None else v # Convert to NumPy array to prevent issues, memory impact should be minimal as there should be a limited amount if indices
         self.__selected_indices = data
         self.__shuffle_indices()
 
@@ -164,6 +119,7 @@ class ZarrArrayLoader(ArrayLoader):
         self.randomise = randomise
         self.maximum_training_samples = maximum_training_samples
         self.maximum_validation_samples = maximum_validation_samples
+        self.source = source
         log.info("Randomise: %s", self.randomise)
         log.info("Max training samples: %s", self.maximum_training_samples)
         log.info("Max validation samples: %s", self.maximum_validation_samples)
@@ -186,7 +142,6 @@ class ZarrArrayLoader(ArrayLoader):
                     self.input_standardizers[input_name] = np.array(from_zarr(source, standardizers))
             kwds.update(component=input_path)
             self.inputs[input_name] = from_zarr(source, **kwds)
-            #log.info("Input %s has shape %s chunks: %s", input_name, self.inputs[input_name].shape, self.inputs[input_name].chunks)
             if shape is not None:
                 self.inputs[input_name] = self.inputs[input_name].reshape(shape)
         self.outputs = {}
@@ -205,13 +160,25 @@ class ZarrArrayLoader(ArrayLoader):
                 outer_dimension = self.outputs[output_name].shape[0]
                 self.outputs[output_name] = self.outputs[output_name].reshape((outer_dimension,) + tuple(shape))
 
+    def __str__(self):
+        return f"{self.source}"
 
-    def get_training(self, batch_size : int) -> _data_generator:
+
+    def get_training(self, batch_size : int) -> ArraySequence:
+        """
+        Generates a training sequence to be used by external consumers.
+
+        :param batch_size: Batch size used by the :class:`ArraySequence`
+        :return: returns an :class:`ArraySequence` containing the data or a subset of it
+        """
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_train_index_array, randomise=self.randomise, maximum_samples=self.maximum_training_samples, standardisers=self.input_standardizers)
 
-    def get_validation(self, batch_size : int) -> _data_generator:
+    def get_validation(self, batch_size : int) -> ArraySequence:
         if self.split_test_index_array is None:
             return None
+        return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array, randomise=self.randomise, maximum_samples=self.maximum_validation_samples, standardisers=self.input_standardizers)
+
+    def get_test(self, batch_size : int) -> ArraySequence:
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array, randomise=self.randomise, maximum_samples=self.maximum_validation_samples, standardisers=self.input_standardizers)
 
     def get_mask(self):

@@ -24,9 +24,11 @@ from queue import Queue
 import backoff
 import math
 import numpy as np
-from keras.utils import to_categorical
+try:
+    from tensorflow.keras.utils import to_categorical
+except ImportError:
+    from keras.utils import to_categorical
 
-from rasterio.windows import Window
 import os
 
 log = logging.getLogger(__name__)
@@ -202,6 +204,8 @@ class TileGenerator(object):
         return data
 
     def _generate_tiles_for_mapping(self, dataset, mapping, target_shape, target_stride):
+        from rasterio.windows import Window
+
         if not mapping: return
 
         window_width, window_height = target_shape

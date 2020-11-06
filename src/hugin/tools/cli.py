@@ -49,7 +49,7 @@ def main():
     predict_parser = subparsers.add_parser('predict', help='Run prediction')
     predict_parser.add_argument('--config', type=argparse.FileType('r'), required=False, default=None,
                                 help='Path to config file')
-    predict_parser.add_argument('--input-dir', required=True, help=argparse.SUPPRESS)
+    predict_parser.add_argument('--input-dir', required=False, help=argparse.SUPPRESS)
     predict_parser.add_argument('--output-dir', required=False, default=None)
     predict_parser.set_defaults(func=predict_handler)
 
