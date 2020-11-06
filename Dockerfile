@@ -28,11 +28,8 @@ RUN chown -R hugin /home/hugin/
 USER $USER
 #RUN chown -R $USER /opt/hugin/
 WORKDIR /home/hugin/src
-RUN pwd
-RUN whoami
-RUN ls -la
 RUN /home/hugin/venv/bin/python setup.py develop
 RUN cp docker/entrypoint.sh /home/hugin/
 RUN chmod +x /home/hugin/entrypoint.sh
-ENTRYPOINT /home/hugin/entrypoint.sh
+ENTRYPOINT ["/home/hugin/entrypoint.sh"]
 #SHELL [ "/bin/bash", "--login", "-c" ]
