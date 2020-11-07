@@ -1,6 +1,8 @@
 import logging
+from urllib.parse import urlparse, parse_qs
 
 import yaml
+import fsspec
 from hugin.engine.scene import RasterSceneTrainer, ArrayModel
 
 try:
@@ -12,7 +14,19 @@ log = logging.getLogger(__name__)
 
 def train_handler(args):
     input_dir = args.input_dir
-    config = yaml.load(args.config, Loader=Loader)
+    up = urlparse(args.config)
+    storage_options = {}
+    if not up.scheme:
+        config_file = open(args.config, "r")
+    else:
+        source = f"{up.scheme}://{up.netloc}{up.path}"
+        for k, v in parse_qs(up.query, keep_blank_values=True).items():
+            value = v[0] if v[0] else None
+            storage_options[k] = value
+        config_file = fsspec.open(source, mode="rt", **storage_options)
+
+    with config_file as f:
+        config = yaml.load(f, Loader=Loader)
 
     data_source = config.get("data_source", None)
     trainer = config["trainer"]

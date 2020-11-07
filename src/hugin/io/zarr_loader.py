@@ -132,10 +132,11 @@ class ZarrArrayLoader(ArrayLoader):
         if not up.scheme:
             self.source = source
         else:
-            self.source = f"{up.scheme}://{up.netloc}/{up.path}"
+            source = f"{up.scheme}://{up.netloc}{up.path}"
             for k,v in parse_qs(up.query, keep_blank_values=True).items():
                 value = v[0] if v[0] else None
                 storage_options[k]=value
+
         self.storage_options = storage_options
         self.source = source
         log.info("Randomise: %s", self.randomise)
