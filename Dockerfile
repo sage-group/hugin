@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:20.04 AS BASE_BUILD
 MAINTAINER Marian Neagul <marian@info.uvt.ro>
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update
@@ -25,6 +25,9 @@ RUN adduser --disabled-password \
     $USER
 
 RUN apt-get install -y virtualenv
+
+FROM BASE_BUILD
+
 COPY requirements.txt /tmp/requirements.txt
 RUN chown -R hugin /home/hugin/ && \
     virtualenv /home/hugin/venv && \
