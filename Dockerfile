@@ -1,7 +1,14 @@
 FROM ubuntu:20.04
 MAINTAINER Marian Neagul <marian@info.uvt.ro>
 ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get update
+RUN apt-get -y install software-properties-common
+RUN add-apt-repository ppa:graphics-drivers
+RUN apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+RUN bash -c 'echo "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda.list'
+RUN bash -c 'echo "deb http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda_learn.list'
 RUN apt-get update && apt-get  install -y wget apt-utils gdal-bin libgdal-dev python3-gdal
+RUN apt-get install -y cuda
 
 ARG username=hugin
 ARG uid=1000
