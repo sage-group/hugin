@@ -32,16 +32,21 @@ RUN chown -R hugin /home/hugin/ && \
     virtualenv /home/hugin/venv && \
     /home/hugin/venv/bin/pip install -r /tmp/requirements.txt
 
-FROM BASE_BUILD
+FROM BASE_BUILD AS BASE_WITH_SETUP_PY
 COPY --from=BASE_WITH_REQUIREMENTS /home/hugin/ /home/hugin/
 
 ENV PATH /home/hugin/venv/bin:$PATH
 COPY . /home/hugin/src
 RUN chown -R hugin /home/hugin/
 USER $USER
-#RUN chown -R $USER /opt/hugin/
 WORKDIR /home/hugin/src
 RUN /home/hugin/venv/bin/python setup.py develop
+
+FROM BASE_BUILD
+COPY --from=BASE_WITH_SETUP_PY /home/hugin/ /home/hugin/
+ENV PATH /home/hugin/venv/bin:$PATH
+USER $USER
+WORKDIR /home/hugin/src
 RUN cp docker/entrypoint.sh /home/hugin/
 RUN chmod +x /home/hugin/entrypoint.sh
 ENTRYPOINT ["/home/hugin/entrypoint.sh"]
