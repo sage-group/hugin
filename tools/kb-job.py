@@ -1,6 +1,7 @@
 import argparse
 import logging
 import sys
+import tabulate
 
 from kubernetes import client, config
 from kubernetes.client import V1EnvVarSource
@@ -12,6 +13,7 @@ config.load_kube_config()
 #configuration = client.Configuration()
 #api_instance = client.BatchV1Api(client.ApiClient(configuration))
 batch_v1 = client.BatchV1Api()
+core_v1 = client.CoreV1Api()
 
 
 def main():
@@ -69,12 +71,20 @@ def submit_job(args):
             pod_args['affinity'] = affinity
 
     template.template.spec = client.V1PodSpec(**pod_args)
-    body.spec = client.V1JobSpec(ttl_seconds_after_finished=600, template=template.template)
-    api_response = batch_v1.create_namespaced_job("default", body, pretty=True)
-    print (api_response)
+    body.spec = client.V1JobSpec(ttl_seconds_after_finished=1800, template=template.template)
+    try:
+        api_response = batch_v1.create_namespaced_job("default", body, pretty=True)
+    except client.exceptions.ApiException as e:
+        logging.critical(f"Failed to start job: {e.reason}")
 
 def get_jobs(args):
-    pass
+    result = core_v1.list_namespaced_pod(namespace=args.namespace, label_selector='hugin-job')
+    #print (result.items)
+    headers = ["Name", "Node Name", "phase"]
+    table = []
+    for pod in result.items:
+        table.append([pod.metadata.name, pod.spec.node_name, pod.status.phase])
+    print(tabulate.tabulate(table, headers)) # tablefmt="fancy_grid")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='HuginEO -- Tool for Kubernetes jobs')
@@ -87,12 +97,13 @@ if __name__ == "__main__":
                                help='Id of the container')
     submit_parser.add_argument('--pull-secret', type=str, required=False, default='dev-info-secret', help="The Kubernetes Pull Secret to be used")
     submit_parser.add_argument("--gpu", action='store_true', default=False)
-    submit_parser.add_argument("--node-selector", type=str, default="sage-gpu=v100-dedicated", help="selector=value, eg: sage-gpu=v100-dedicated")
+    submit_parser.add_argument("--node-selector", type=str, default="sage-gpu=v100-transient", help="selector=value, eg: sage-gpu=v100-dedicated")
     #submit_parser.add_argument()
     submit_parser.add_argument('--labels', type=str, required=False, default=None,
                                help='Id of the container')
     submit_parser.set_defaults(func=submit_job)
     jobs_parser = subparsers.add_parser('jobs', help="Get Jobs")
+    jobs_parser.add_argument("--namespace", type=str, default="default")
     jobs_parser.set_defaults(func=get_jobs)
     get_log_parser = subparsers.add_parser('get-logs', help="Get Logs")
     get_log_parser = subparsers.add_parser('get-logs', help="Cancel Job")
