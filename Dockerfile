@@ -1,14 +1,14 @@
-FROM ubuntu:20.04 AS BASE_BUILD
+FROM ubuntu:18.04 AS BASE_BUILD
 MAINTAINER Marian Neagul <marian@info.uvt.ro>
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && \
     apt-get -y install software-properties-common virtualenv && \
     add-apt-repository ppa:graphics-drivers && \
     apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub && \
-    bash -c 'echo "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda.list' && \
-    bash -c 'echo "deb http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda_learn.list' && \
+    bash -c 'echo "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/cuda.list' && \
+    bash -c 'echo "deb http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/cuda_learn.list' && \
     apt-get update && apt-get  install -y wget apt-utils gdal-bin libgdal-dev python3-gdal && \
-    apt-get install -y cuda && \
+    apt-get install -y cuda-10-1 libcudnn7 && \
     rm -rf /var/lib/apt/lists/*
 
 ARG username=hugin
@@ -52,5 +52,6 @@ RUN cp docker/entrypoint.sh /home/hugin/ && \
     chmod +x /home/hugin/entrypoint.sh && \
     chown -R hugin /home/hugin/ && \
     rm -fr ~/.cache/
+RUN apt-cache search cuda
 ENTRYPOINT ["/home/hugin/entrypoint.sh"]
 #SHELL [ "/bin/bash", "--login", "-c" ]
