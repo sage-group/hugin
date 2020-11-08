@@ -29,7 +29,7 @@ FROM BASE_BUILD AS BASE_WITH_REQUIREMENTS
 
 COPY requirements.txt /tmp/requirements.txt
 RUN chown -R hugin /home/hugin/ && \
-    virtualenv /home/hugin/venv && \
+    virtualenv -p python3 /home/hugin/venv && \
     /home/hugin/venv/bin/pip install -r /tmp/requirements.txt && \
     rm -fr ~/.cache/
 
