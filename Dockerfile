@@ -34,7 +34,7 @@ RUN chown -R hugin /home/hugin/ && \
     rm -fr ~/.cache/
 
 FROM BASE_BUILD AS BASE_WITH_SETUP_PY
-COPY --from=BASE_WITH_REQUIREMENTS /home/hugin/ /home/hugin/
+COPY --from=BASE_WITH_REQUIREMENTS /home/hugin/venv /home/hugin/venv
 
 ENV PATH /home/hugin/venv/bin:$PATH
 COPY . /home/hugin/src
@@ -46,12 +46,11 @@ RUN /home/hugin/venv/bin/python setup.py develop && \
 FROM BASE_BUILD
 COPY --from=BASE_WITH_SETUP_PY /home/hugin/ /home/hugin/
 ENV PATH /home/hugin/venv/bin:$PATH
-USER $USER
 WORKDIR /home/hugin/src
 RUN cp docker/entrypoint.sh /home/hugin/ && \
     chmod +x /home/hugin/entrypoint.sh && \
     chown -R hugin /home/hugin/ && \
     rm -fr ~/.cache/
-RUN apt-cache search cuda
+USER $USER
 ENTRYPOINT ["/home/hugin/entrypoint.sh"]
 #SHELL [ "/bin/bash", "--login", "-c" ]
