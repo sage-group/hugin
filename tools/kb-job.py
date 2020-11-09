@@ -19,7 +19,7 @@ core_v1 = client.CoreV1Api()
 def main():
     pass
 
-def submit_job(args):
+def submit_job(args, command=None):
     container_image = args.container
     container_name = args.name
 
@@ -34,14 +34,25 @@ def submit_job(args):
     template.template = client.V1PodTemplateSpec(
         metadata=client.V1ObjectMeta(labels=labels)
     )
-    env_list = []
 
     tolerations = []
-    containe_args = dict(name=f"container-{container_name}", image=container_image, env=env_list)
+    env = []
+    for env_spec in args.environment:
+        env_name,env_value = env_spec.split("=", 1)
+        env.append(client.V1EnvVar(name=env_name, value=env_value))
+
+    containe_args = dict(
+        name=f"container-{container_name}",
+        image=container_image,
+        env=env,
+    )
+
     if args.gpu:
         tolerations.append(client.V1Toleration(
         key='nvidia.com/gpu', operator='Exists', effect='NoSchedule'))
         containe_args['resources'] = client.V1ResourceRequirements(limits={"nvidia.com/gpu": 1})
+    if command or args.command:
+        containe_args['command'] = command if command else args.command
 
     container = client.V1Container(**containe_args)
     pull_secrets = []
@@ -87,6 +98,12 @@ def get_jobs(args):
     print(tabulate.tabulate(table, headers)) # tablefmt="fancy_grid")
 
 if __name__ == "__main__":
+    try:
+        cmd_line = sys.argv[1:sys.argv.index('--')]
+        rest = sys.argv[sys.argv.index('--')+1:]
+    except ValueError:
+        cmd_line = sys.argv[1:]
+        rest = None
     parser = argparse.ArgumentParser(description='HuginEO -- Tool for Kubernetes jobs')
     subparsers = parser.add_subparsers(help='Available commands')
 
@@ -98,17 +115,21 @@ if __name__ == "__main__":
     submit_parser.add_argument('--pull-secret', type=str, required=False, default='dev-info-secret', help="The Kubernetes Pull Secret to be used")
     submit_parser.add_argument("--gpu", action='store_true', default=False)
     submit_parser.add_argument("--node-selector", type=str, default="sage-gpu=v100-transient", help="selector=value, eg: sage-gpu=v100-dedicated")
-    #submit_parser.add_argument()
+    submit_parser.add_argument("--command", type=str, default=None, help="Command to execute in container")
+    submit_parser.add_argument("-e", "--environment", type=str, default=None, help="Environment Variables: NAME=VALUE", nargs='*')
+    submit_parser.add_argument('foo', nargs='?')
     submit_parser.add_argument('--labels', type=str, required=False, default=None,
                                help='Id of the container')
-    submit_parser.set_defaults(func=submit_job)
+    def _submit_job(*args):
+        return submit_job(*args, command=rest)
+    submit_parser.set_defaults(func=_submit_job)
     jobs_parser = subparsers.add_parser('jobs', help="Get Jobs")
     jobs_parser.add_argument("--namespace", type=str, default="default")
     jobs_parser.set_defaults(func=get_jobs)
     get_log_parser = subparsers.add_parser('get-logs', help="Get Logs")
     get_log_parser = subparsers.add_parser('get-logs', help="Cancel Job")
 
-    args = parser.parse_args()
+    args = parser.parse_args(cmd_line)
 
     if hasattr(args, "func"):
         args.func(args)
