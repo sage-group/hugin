@@ -15,6 +15,7 @@ __license__ = \
        See the License for the specific language governing permissions and
        limitations under the License.
     """
+import os
 import argparse
 from logging import getLogger
 from logging.config import dictConfig
@@ -41,7 +42,7 @@ def main():
     subparsers = parser.add_subparsers(help='Available commands')
 
     train_parser = subparsers.add_parser('train', help="Train a model")
-    train_parser.add_argument('--config', type=str, required=True, default=None,
+    train_parser.add_argument('--config', type=str, required=False, default=os.environ.get("HUGIN_CONFIG_URL", None),
                               help='Path to config file')
     train_parser.add_argument('--input-dir', required=False, default=None, help=argparse.SUPPRESS)
     train_parser.set_defaults(func=train_handler)

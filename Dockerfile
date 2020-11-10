@@ -1,15 +1,6 @@
-FROM ubuntu:18.04 AS BASE_BUILD
+FROM nvidia/cuda:10.1-runtime-ubuntu18.04 AS BASE_BUILD
 MAINTAINER Marian Neagul <marian@info.uvt.ro>
 ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update && \
-    apt-get -y install software-properties-common virtualenv && \
-    add-apt-repository ppa:graphics-drivers && \
-    apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub && \
-    bash -c 'echo "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/cuda.list' && \
-    bash -c 'echo "deb http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/cuda_learn.list' && \
-    apt-get update && apt-get  install -y wget apt-utils gdal-bin libgdal-dev python3-gdal && \
-    apt-get install -y cuda-10-1 libcudnn7 && \
-    rm -rf /var/lib/apt/lists/*
 
 ARG username=hugin
 ARG uid=1000
@@ -25,16 +16,20 @@ RUN adduser --disabled-password \
     --home $HOME \
     $USER
 
-FROM BASE_BUILD AS BASE_WITH_REQUIREMENTS
 
 COPY requirements.txt /tmp/requirements.txt
-RUN chown -R hugin /home/hugin/ && \
+
+RUN apt-get update && \
+    apt-get -y install virtualenv apt-utils && \
+    apt-get update && apt-get  install -y apt-utils gdal-bin libgdal-dev python3-gdal
+RUN rm -rf /var/lib/apt/lists/* && \
+    chown -R hugin /home/hugin/ && \
     virtualenv -p python3 /home/hugin/venv && \
     /home/hugin/venv/bin/pip install -r /tmp/requirements.txt && \
-    rm -fr /home/hugin/.cache/
+    rm -fr /home/hugin/.cache/  /root/.cache/ && \
+    apt-get purge -y libgdal-dev apt-utils &&\
+    apt-get autoremove -y
 
-FROM BASE_BUILD AS BASE_WITH_SETUP_PY
-COPY --from=BASE_WITH_REQUIREMENTS /home/hugin/venv /home/hugin/venv
 
 ENV PATH /home/hugin/venv/bin:$PATH
 COPY . /home/hugin/src
@@ -43,8 +38,8 @@ RUN /home/hugin/venv/bin/python setup.py develop && \
     chown -R hugin /home/hugin/ && \
     rm -fr /home/hugin/.cache/
 
-FROM BASE_BUILD
-COPY --from=BASE_WITH_SETUP_PY /home/hugin/ /home/hugin/
+#FROM BASE_BUILD
+#COPY --from=BASE_WITH_SETUP_PY /home/hugin/ /home/hugin/
 ENV PATH /home/hugin/venv/bin:$PATH
 WORKDIR /home/hugin/src
 RUN cp docker/entrypoint.sh /home/hugin/ && \
@@ -53,4 +48,5 @@ RUN cp docker/entrypoint.sh /home/hugin/ && \
     rm -fr /home/hugin/.cache/
 USER $USER
 ENTRYPOINT ["/home/hugin/entrypoint.sh"]
+CMD ["train"]
 #SHELL [ "/bin/bash", "--login", "-c" ]
