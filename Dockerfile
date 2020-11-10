@@ -44,7 +44,6 @@ ENV PATH /home/hugin/venv/bin:$PATH
 WORKDIR /home/hugin/src
 RUN cp docker/entrypoint.sh /home/hugin/ && \
     chmod +x /home/hugin/entrypoint.sh && \
-    chown -R hugin /home/hugin/ && \
     rm -fr /home/hugin/.cache/
 USER $USER
 ENTRYPOINT ["/home/hugin/entrypoint.sh"]
