@@ -18,7 +18,8 @@ __license__ = \
 import importlib
 from logging import getLogger
 
-import keras.backend as K
+#import keras.backend as K
+from tensorflow.keras import backend as K
 import numpy as np
 import tensorflow as tf
 from sklearn.metrics import cohen_kappa_score, accuracy_score, average_precision_score

@@ -86,7 +86,7 @@ def submit_job(args, command=None):
     body.spec = client.V1JobSpec(ttl_seconds_after_finished=1800, template=template.template)
     try:
         api_response = batch_v1.create_namespaced_job("default", body, pretty=True)
-        print (api_response)
+        #print (api_response)
     except client.exceptions.ApiException as e:
         logging.critical(f"Failed to start job: {e.reason}")
 
