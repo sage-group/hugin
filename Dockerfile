@@ -21,8 +21,8 @@ COPY requirements.txt /tmp/requirements.txt
 
 RUN apt-get update && \
     apt-get -y install virtualenv apt-utils && \
-    apt-get update && apt-get  install -y apt-utils gdal-bin libgdal-dev python3-gdal
-RUN rm -rf /var/lib/apt/lists/* && \
+    apt-get update && apt-get  install -y apt-utils gdal-bin libgdal-dev python3-gdal && \
+    rm -rf /var/lib/apt/lists/* && \
     chown -R hugin /home/hugin/ && \
     virtualenv -p python3 /home/hugin/venv && \
     /home/hugin/venv/bin/pip install -r /tmp/requirements.txt && \
