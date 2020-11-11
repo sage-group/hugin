@@ -9,6 +9,7 @@ Fiona
 s3fs
 dask[array]
 gcsfs
+zarr
 h5py==2.10.0
 backoff==1.8.0
 matplotlib

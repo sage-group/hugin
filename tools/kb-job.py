@@ -37,9 +37,10 @@ def submit_job(args, command=None):
 
     tolerations = []
     env = []
-    for env_spec in args.environment:
-        env_name,env_value = env_spec.split("=", 1)
-        env.append(client.V1EnvVar(name=env_name, value=env_value))
+    if args.environment:
+        for env_spec in args.environment:
+            env_name,env_value = env_spec.split("=", 1)
+            env.append(client.V1EnvVar(name=env_name, value=env_value))
 
     containe_args = dict(
         name=f"container-{container_name}",
@@ -85,6 +86,7 @@ def submit_job(args, command=None):
     body.spec = client.V1JobSpec(ttl_seconds_after_finished=1800, template=template.template)
     try:
         api_response = batch_v1.create_namespaced_job("default", body, pretty=True)
+        print (api_response)
     except client.exceptions.ApiException as e:
         logging.critical(f"Failed to start job: {e.reason}")
 
