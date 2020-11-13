@@ -70,9 +70,9 @@ def unet_rrn(
 ):
     nr_classes = output_channels
     timeseries, input_1_height, input_1_width, input_1_channels = input_shapes["input_1"]
-    timeseries_mask_shape = input_shapes["input_2"]
+    #timeseries_mask_shape = input_shapes["input_2"]
     inputs = Input((timeseries, input_1_height, input_1_width, input_1_channels))
-    masks = Input(timeseries_mask_shape)
+    #masks = Input(timeseries_mask_shape)
 
     # Encoding
     conv1_output, conv1_output_last, state1_h, state1_c, pool1 = encode_block(32, inputs, kernel, stride, activation,

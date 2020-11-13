@@ -75,6 +75,7 @@ class ArraySequence(Sequence):
                 if key not in inputs:
                     inputs[key] = []
                 dask_data = value[idx]
+                log.debug(f"Fetching data for {idx} from value of {key}={value}")
                 data = np.array(dask_data)
                 standardiser = self.standardisers.get(key)  if self.standardisers else None
                 if standardiser is not None:
