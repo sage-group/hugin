@@ -1,5 +1,6 @@
 import math
 import os
+import sys
 import numpy as np
 from logging import getLogger
 
@@ -73,7 +74,8 @@ class ArraySequence(Sequence):
             for key, value in self.input_component_mapping.items():
                 if key not in inputs:
                     inputs[key] = []
-                data = np.array(value[idx])
+                dask_data = value[idx]
+                data = np.array(dask_data)
                 standardiser = self.standardisers.get(key)  if self.standardisers else None
                 if standardiser is not None:
                     data = data.astype(np.float64)
@@ -88,10 +90,9 @@ class ArraySequence(Sequence):
                     outputs[key] = []
                 outputs[key].append(value[idx])
 
-        inputs = {k:np.stack(v) for k,v in inputs.items()}
-        outputs = {k:np.stack(v) for k, v in outputs.items()}
-
-        return inputs, outputs
+        source = {k:np.array(np.stack(v)) for k,v in inputs.items()}
+        targets = {k:np.array(np.stack(v)) for k, v in outputs.items()}
+        return source, targets
 
 
     def get_input_shapes(self):
@@ -136,6 +137,12 @@ class ZarrArrayLoader(ArrayLoader):
             for k,v in parse_qs(up.query, keep_blank_values=True).items():
                 value = v[0] if v[0] else None
                 storage_options[k]=value
+            if up.scheme == "s3":
+                s3_endpoint = os.environ.get('S3_CUSTOM_ENDPOINT_URL')
+                if s3_endpoint:
+                    storage_options['client_kwargs'] = {
+                        'endpoint_url': s3_endpoint
+                    }
 
         self.storage_options = storage_options
         self.source = source
@@ -160,6 +167,8 @@ class ZarrArrayLoader(ArrayLoader):
                 if standardizers is not None:
                     self.input_standardizers[input_name] = np.array(from_zarr(source, standardizers, storage_options=self.storage_options))
             kwds.update(component=input_path)
+            print (f"Kwds: {kwds}")
+            print (f"storage_options: {self.storage_options}")
             self.inputs[input_name] = from_zarr(source, **kwds, storage_options=self.storage_options)
             if shape is not None:
                 self.inputs[input_name] = self.inputs[input_name].reshape(shape)

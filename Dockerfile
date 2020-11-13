@@ -27,6 +27,7 @@ RUN apt-get update && \
     virtualenv -p python3 /home/hugin/venv && \
     /home/hugin/venv/bin/pip install -r /tmp/requirements.txt && \
     rm -fr /home/hugin/.cache/  /root/.cache/ && \
+    chown -R hugin /home/hugin/ && \
     apt-get purge -y libgdal-dev apt-utils &&\
     apt-get autoremove -y
 
@@ -35,7 +36,6 @@ ENV PATH /home/hugin/venv/bin:$PATH
 COPY . /home/hugin/src
 WORKDIR /home/hugin/src
 RUN /home/hugin/venv/bin/python setup.py develop && \
-    chown -R hugin /home/hugin/ && \
     rm -fr /home/hugin/.cache/
 
 #FROM BASE_BUILD

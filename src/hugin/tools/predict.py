@@ -2,7 +2,6 @@ import logging
 import os
 
 import yaml
-from hugin.engine.scene import RasterScenePredictor, ArrayModelPredictor
 
 try:
     from yaml import CLoader as Loader
@@ -22,6 +21,8 @@ def predict_handler(args):
     data_source = ensemble_config["data_source"]
     predictor = ensemble_config["predictor"]
     saver = ensemble_config["output"]
+
+    from hugin.engine.scene import RasterScenePredictor, ArrayModelPredictor
 
     if isinstance(predictor, RasterScenePredictor):
         if data_source.input_source is None:

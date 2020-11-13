@@ -32,11 +32,12 @@ def train_handler(args):
     trainer = config["trainer"]
     training_configuration = config["configuration"]
 
-    destination = training_configuration["model_path"]
+    destination = training_configuration.get("model_path") if training_configuration is not None else None
     keys = {
         'name': trainer.model_name
     }
-    destination = destination.format(**keys)
+    if destination is not None:
+        destination = destination.format(**keys)
     trainer.destination = destination
 
     if isinstance(trainer, RasterSceneTrainer):

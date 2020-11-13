@@ -192,7 +192,7 @@ class KerasModel(RasterModel):
             callbacks.append(callback)
 
         if self.checkpoint and validation_data is not None:
-            if not self.destination:
+            if not self.destination is not None:
                 log.warning("Destination not specified. Checkpoints will not be saved")
             else:
                 monitor = self.checkpoint.get('monitor', 'val_loss')
@@ -210,7 +210,7 @@ class KerasModel(RasterModel):
                 callbacks.append(ModelCheckpoint(filepath=filepath, monitor=monitor, verbose=verbose,
                                                  save_best_only=save_best_only, save_weights_only=save_weights_only,
                                                  mode=mode, period=period))
-        if self.destination and validation_data is not None:
+        if self.destination is not None and validation_data is not None:
             log_destination = os.path.join(self.destination, "logs.txt")
             callbacks.append(CSVLogger(log_destination))
 
