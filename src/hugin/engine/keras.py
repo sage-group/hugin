@@ -135,6 +135,7 @@ class KerasModel(RasterModel):
         if model_builder_options.get('output_shapes') is None:
             model_builder_options['output_shapes'] = self.output_shapes
         model = self.model_builder(**model_builder_options)
+        log.info("Model built")
         self.model = model
         return model
 

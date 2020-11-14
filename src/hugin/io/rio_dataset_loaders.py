@@ -13,7 +13,7 @@ import rasterio
 import yaml
 import json
 import pickle
-from geopandas import GeoDataFrame
+
 from rasterio import RasterioIOError, MemoryFile
 from rasterio.io import DatasetReader
 
@@ -64,6 +64,7 @@ class DatasetGenerator(object):
 
 
     def __next__(self):
+        from geopandas import GeoDataFrame
         length = len(self)
         if length == 0:
             raise StopIteration()

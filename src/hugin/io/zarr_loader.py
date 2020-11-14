@@ -77,6 +77,7 @@ class ArraySequence(Sequence):
                 dask_data = value[idx]
                 log.debug(f"Fetching data for {idx} from value of {key}={value}")
                 data = np.array(dask_data)
+                log.debug(f"Fetched data for {idx} from value of {key}={value}")
                 standardiser = self.standardisers.get(key)  if self.standardisers else None
                 if standardiser is not None:
                     data = data.astype(np.float64)
