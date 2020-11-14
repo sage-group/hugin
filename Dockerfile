@@ -47,5 +47,6 @@ RUN cp docker/entrypoint.sh /home/hugin/ && \
     rm -fr /home/hugin/.cache/
 USER $USER
 ENTRYPOINT ["/home/hugin/entrypoint.sh"]
+ENV LD_LIBRARY_PATH=/usr/local/cuda-10.1/lib64/
 CMD ["train"]
 #SHELL [ "/bin/bash", "--login", "-c" ]
