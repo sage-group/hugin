@@ -1,4 +1,4 @@
-FROM nvidia/cuda:10.1-cudnn7-runtime-ubuntu18.04 AS BASE_BUILD
+FROM nvidia/cuda:10.1-cudnn7-runtime-ubuntu18.04
 MAINTAINER Marian Neagul <marian@info.uvt.ro>
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -40,6 +40,8 @@ RUN /home/hugin/venv/bin/python setup.py develop && \
 
 #FROM BASE_BUILD
 #COPY --from=BASE_WITH_SETUP_PY /home/hugin/ /home/hugin/
+COPY --from=nvidia/cuda:10.1-runtime-ubuntu18.04 /usr/lib/x86_64-linux-gnu/libcudnn.so.7.6.5 /usr/lib/x86_64-linux-gnu/libcudnn.so.7.6.5
+COPY --from=nvidia/cuda:10.1-runtime-ubuntu18.04 /usr/lib/x86_64-linux-gnu/libcudnn.so.7 /usr/lib/x86_64-linux-gnu/libcudnn.so.7
 ENV PATH /home/hugin/venv/bin:$PATH
 WORKDIR /home/hugin/src
 RUN cp docker/entrypoint.sh /home/hugin/ && \
