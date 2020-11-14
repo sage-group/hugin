@@ -1,4 +1,4 @@
-FROM nvidia/cuda:10.1-runtime-ubuntu18.04 AS BASE_BUILD
+FROM nvidia/cuda:10.1-cudnn7-runtime-ubuntu18.04 AS BASE_BUILD
 MAINTAINER Marian Neagul <marian@info.uvt.ro>
 ENV DEBIAN_FRONTEND noninteractive
 
