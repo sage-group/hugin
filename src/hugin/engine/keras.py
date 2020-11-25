@@ -191,13 +191,16 @@ class KerasModel(RasterModel):
 
         for callback in self.callbacks:
             callbacks.append(callback)
-
+        log.info(f"Registered callbacks: {callbacks}")
+        log.debug(f"Checkpoint: {self.checkpoint}")
+        log.debug(f"Validation data: {validation_data}")
         if self.checkpoint and validation_data is not None:
             if not self.destination is not None:
                 log.warning("Destination not specified. Checkpoints will not be saved")
             else:
+                log.info(f"Checkpoints will be saved in {self.destination}")
                 monitor = self.checkpoint.get('monitor', 'val_loss')
-                verbose = self.checkpoint.get('verbose', 0)
+                verbose = self.checkpoint.get('verbose', 1)
                 save_best_only = self.checkpoint.get('save_best_only', False)
                 save_weights_only = self.checkpoint.get('save_weights_only', False)
                 mode = self.checkpoint.get('mode', 'auto')

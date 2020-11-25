@@ -41,5 +41,5 @@ def predict_handler(args):
             saver.destination = output_dir
         saver.flow_prediction_from_source(dataset_loader, predictor)
     elif isinstance(predictor, ArrayModelPredictor):
-        log.info("Using source: %s", data_source)
+        log.info("Using aray source: %s", data_source)
         saver.flow_prediction_from_array_loader(data_source, predictor)

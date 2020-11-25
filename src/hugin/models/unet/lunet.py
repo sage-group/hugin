@@ -2,11 +2,12 @@ from tensorflow.keras.layers import Input, concatenate, MaxPooling2D, ZeroPaddin
 from tensorflow.keras.layers import ConvLSTM2D, TimeDistributed, Layer
 from tensorflow.keras.models import Model
 
+from hugin.tools.utils import custom_objects
 
 
 class LSTMLastState(Layer):
-    def __init__(self):
-        super(LSTMLastState, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(LSTMLastState, self).__init__(*args, **kwargs)
 
     def call(self, inputs):
         # print("LSTMLastState __call__ input: ", inputs)
@@ -52,7 +53,7 @@ def conv_t_block(size, input_1, input_2, kernel, stride, activation, kinit, padd
                           padding=padding)(conv2)
     return conv3
 
-
+@custom_objects({'LSTMLastState': LSTMLastState})
 def unet_rrn(
         name,
         input_shapes,

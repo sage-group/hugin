@@ -159,7 +159,7 @@ class ZarrArrayLoader(ArrayLoader):
         for input_name, input_path in inputs.items():
             shape = None
             kwds = {}
-            if isinstance(input_path, dict) :
+            if isinstance(input_path, dict):
                 dask_chunk_size = input_path.get('dask_chunk_size')
                 if dask_chunk_size is not None:
                     kwds.update(chunks=dask_chunk_size)
