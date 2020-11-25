@@ -21,12 +21,12 @@ def encode_block(size, inputs, kernel, stride, activation, kinit, padding, max_p
     result = []
     conv1_output, state1_h, state1_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride, activation=activation,
                                                   kernel_initializer=kinit,
-                                                  padding=padding, return_sequences=True, return_state=True, recurrent_dropout=0.2)(inputs)
+                                                  padding=padding, return_sequences=True, return_state=True, recurrent_dropout=0.2)(inputs, mask=mask)
 
     conv2_output, state2_h, state2_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride, activation=activation,
                                                   kernel_initializer=kinit,
                                                   padding=padding, return_sequences=True, return_state=True)(
-        conv1_output)
+                                                      conv1_output, mask=mask)
 
     result.append(conv2_output)
     if return_last_output:
@@ -35,7 +35,7 @@ def encode_block(size, inputs, kernel, stride, activation, kinit, padding, max_p
     result.extend([state2_h, state2_c])
 
     if max_pool:
-        pool1 = TimeDistributed(MaxPooling2D(pool_size=(2, 2)))(conv2_output)
+        pool1 = TimeDistributed(MaxPooling2D(pool_size=(2, 2)))(conv2_output, mask=None)
         result.append(pool1)
 
     return result
@@ -70,19 +70,21 @@ def unet_rrn(
 ):
     nr_classes = output_channels
     timeseries, input_1_height, input_1_width, input_1_channels = input_shapes["input_1"]
-    #timeseries_mask_shape = input_shapes["input_2"]
+    timeseries_mask_shape = input_shapes["input_2"]
     inputs = Input((timeseries, input_1_height, input_1_width, input_1_channels))
+    print ("ZZZZZZZZZZZZZZZZZZZZZ", timeseries_mask_shape)
+    mask = Input(timeseries_mask_shape)
     #masks = Input(timeseries_mask_shape)
 
     # Encoding
     conv1_output, conv1_output_last, state1_h, state1_c, pool1 = encode_block(32, inputs, kernel, stride, activation,
-                                                                              kinit, padding)
+                                                                              kinit, padding, mask=mask)
     conv2_output, conv2_output_last, state2_h, state2_c, pool2 = encode_block(64, pool1, kernel, stride, activation,
-                                                                              kinit, padding)
+                                                                              kinit, padding, mask=mask)
     conv3_output, conv3_output_last, state3_h, state3_c, pool3 = encode_block(128, pool2, kernel, stride, activation,
-                                                                              kinit, padding)
+                                                                              kinit, padding, mask=mask)
     conv4_output, conv4_output_last, state4_h, state4_c, pool4 = encode_block(256, pool3, kernel, stride, activation,
-                                                                              kinit, padding)
+                                                                              kinit, padding, mask=mask)
 
     # Middle
     conv5_output, conv5_output_last, state5_h, state5_c = encode_block(512, pool4, kernel, stride, activation, kinit,
@@ -100,6 +102,6 @@ def unet_rrn(
     conv9 = Cropping2D((mpadd, mpadd))(conv9)
 
     conv10 = Convolution2D(nr_classes, (1, 1), activation='softmax', name="output_1")(conv9)
-    model = Model(inputs=[inputs], outputs=[conv10])
+    model = Model(inputs=[inputs, mask], outputs=[conv10])
 
     return model
