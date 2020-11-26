@@ -61,6 +61,9 @@ class ArraySequence(Sequence):
         length = math.ceil(len(self.selected_indices) / self.batch_size)
         return int(length)
 
+    def get_real_length(self) -> int:
+        return len(self.selected_indices)
+
     def __getitem__(self, idx):
         inputs = {}
         outputs = {}
@@ -102,7 +105,6 @@ class ArraySequence(Sequence):
         for key, value in self.input_component_mapping.items():
             shapes[key] = value.shape[1:]
         return shapes
-
 
 class ZarrArrayLoader(ArrayLoader):
     def __init__(self,

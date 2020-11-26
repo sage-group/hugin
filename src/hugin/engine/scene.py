@@ -1,10 +1,13 @@
 import re
 import os
 import math
+import tqdm
 
 import h5py
 import numpy as np
 #import rasterio
+import zarr
+from urllib.parse import urlparse, parse_qs
 
 from logging import getLogger
 
@@ -166,7 +169,7 @@ class ArrayModelPredictor(ArrayModel):
 
     def predict(self, data_source : ZarrArrayLoader):
         result = self.model.predict(data_source)
-        raise NotImplementedError()
+        return result
 
     
 
@@ -433,11 +436,64 @@ class SceneExporter(object):
             self.save_scene(scene_id, scene_data, prediction)
             overall_metrics[scene_id] = metrics
 
+
+class ArrayExporter(SceneExporter):
+    def __init__(self, zarr_dataset, destination_array, *args, **kwargs):
+        super(ArrayExporter, self).__init__(*args, **kwargs)
+        self.destination_array = destination_array
+
+        up = urlparse(zarr_dataset)
+        storage_options = {}
+        if not up.scheme:
+            self.zarr_dataset = zarr_dataset
+        else:
+            zarr_dataset = f"{up.scheme}://{up.netloc}{up.path}"
+            for k,v in parse_qs(up.query, keep_blank_values=True).items():
+                value = v[0] if v[0] else None
+                storage_options[k]=value
+            if up.scheme == "s3":
+                s3_endpoint = os.environ.get('S3_CUSTOM_ENDPOINT_URL')
+                if s3_endpoint:
+                    storage_options['client_kwargs'] = {
+                        'endpoint_url': s3_endpoint
+                    }
+            self.zarr_dataset = zarr_dataset
+        self.storage_options = storage_options
+
     def flow_prediction_from_array_loader(self, loader, predictor):
-        test_data = loader.get_test(batch_size=1)
+        batch_size = 1
+        test_data = loader.get_test(batch_size=batch_size)
+        real_length = test_data.get_real_length()
         length = len(test_data)
-        prediction_result = predictor.predict(test_data)
-        print ("Flow....")
+        dataset = zarr.open(self.zarr_dataset, "a", storage_options=self.storage_options)
+
+        if not length:
+            log.warning("No data for prediction")
+            return
+
+        destination_array = None # Created lazily
+
+        first_set = test_data[0]
+        if len (first_set) == 2: # Ground Truth Available
+            pass
+        else:
+            pass
+
+        last_idx = 0
+        for i in tqdm.tqdm(range(0, length)):
+            #print (i, batch_size, test_data[i][0]['input_1'].shape)
+            predict_data = test_data[i][0]
+            prediction_result = predictor.predict(predict_data)
+            if destination_array is None:
+                prediction_shape = prediction_result.shape[1:]
+                destination_array_shape = (real_length, ) + prediction_shape
+                destination_array = dataset.zeros(self.destination_array,
+                                                  dtype=prediction_result.dtype,
+                                                  shape=destination_array_shape, overwrite=True)
+            prediction_length = len(prediction_result)
+            for pred_idx, dest_idx in enumerate(range(last_idx, last_idx+prediction_length)):
+                destination_array[dest_idx] = prediction_result[pred_idx]
+
 
 
 class MultipleFormatExporter(SceneExporter):
