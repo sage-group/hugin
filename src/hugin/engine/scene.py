@@ -461,7 +461,7 @@ class ArrayExporter(SceneExporter):
         self.storage_options = storage_options
 
     def flow_prediction_from_array_loader(self, loader, predictor):
-        batch_size = 1
+        batch_size = 10
         test_data = loader.get_test(batch_size=batch_size)
         real_length = test_data.get_real_length()
         length = len(test_data)
@@ -483,16 +483,24 @@ class ArrayExporter(SceneExporter):
         for i in tqdm.tqdm(range(0, length)):
             #print (i, batch_size, test_data[i][0]['input_1'].shape)
             predict_data = test_data[i][0]
+            log.info("Starting prediction")
             prediction_result = predictor.predict(predict_data)
+            log.info("Finished prediction")
             if destination_array is None:
                 prediction_shape = prediction_result.shape[1:]
                 destination_array_shape = (real_length, ) + prediction_shape
+                destination_array_chunks = (1, ) + tuple(None for _ in prediction_shape)
                 destination_array = dataset.zeros(self.destination_array,
                                                   dtype=prediction_result.dtype,
-                                                  shape=destination_array_shape, overwrite=True)
+                                                  chunks=destination_array_chunks,
+                                                  shape=destination_array_shape,
+                                                  overwrite=True)
             prediction_length = len(prediction_result)
+            log.info("Saving predictions")
             for pred_idx, dest_idx in enumerate(range(last_idx, last_idx+prediction_length)):
-                destination_array[dest_idx] = prediction_result[pred_idx]
+                destination_array[dest_idx, ...] = prediction_result[pred_idx, ...]
+            last_idx = dest_idx+1
+            log.info("Finished saving")
 
 
 

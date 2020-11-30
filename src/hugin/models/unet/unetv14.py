@@ -15,10 +15,8 @@ __license__ = \
        limitations under the License.
     """
 
-from keras.layers import Input, concatenate, MaxPooling2D, ZeroPadding2D, Cropping2D
-from keras.layers.convolutional import Convolution2D, Convolution2DTranspose
-from keras.layers.normalization import BatchNormalization
-from keras.models import Model
+from tensorflow.keras.layers import Input, concatenate, MaxPooling2D, ZeroPadding2D, Cropping2D, Convolution2D, Convolution2DTranspose, BatchNormalization, Bidirectional
+from tensorflow.keras.models import Model
 
 from hugin.tools.utils import custom_objects, dice_coef
 
@@ -109,7 +107,7 @@ def unet_v14(
 
     conv9 = Cropping2D((mpadd, mpadd))(conv9)
 
-    conv10 = Convolution2D(nr_classes, (1, 1), activation='softmax')(conv9)
+    conv10 = Convolution2D(nr_classes, (1, 1), activation='softmax', name="output_1")(conv9)
     model = Model(inputs=[inputs], outputs=[conv10])
 
     return model
