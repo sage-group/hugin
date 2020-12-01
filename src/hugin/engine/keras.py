@@ -58,7 +58,7 @@ class KerasModel(RasterModel):
         self.cpu_relocation = cpu_relocation
         self.load_only_weights = load_only_weights
         self.enable_multi_gpu = enable_multi_gpu
-        if self.use_tpu is not None and self.enable_multi_gpu:
+        if self.use_tpu and self.enable_multi_gpu:
             raise ValueError("Can't use both multi_gpu and TPU's")
         self.model_builder_options = model_builder_options
         if 'input_shapes' not in self.model_builder_options:
@@ -128,7 +128,17 @@ class KerasModel(RasterModel):
 
     def __create_model(self, train_data=None):
         import tensorflow as tf
-        if self.enable_multi_gpu:
+        if self.use_tpu:
+            print("Using TPU")
+            resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu='grpc://' + os.environ['COLAB_TPU_ADDR'])
+            tf.config.experimental_connect_to_cluster(resolver)
+            tf.tpu.experimental.initialize_tpu_system(resolver)
+            log.info("All TPU devices: %s", tf.config.list_logical_devices('TPU'))
+            print("All TPU devices:", tf.config.list_logical_devices('TPU'))
+            strategy = tf.distribute.TPUStrategy(resolver)
+            with strategy.scope():
+                return self.__create_model_impl(train_data)
+        elif self.enable_multi_gpu:
             with tf.device('/cpu:0'):
                 return self.__create_model_impl(train_data)
         else:
