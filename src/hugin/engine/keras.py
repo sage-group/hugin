@@ -54,12 +54,12 @@ class KerasModel(RasterModel):
         self.checkpoint = checkpoint
         self.use_tpu = use_tpu
         self.num_gpus = num_gpus
-        if self.use_tpu is not None and self.enable_multi_gpu:
-            raise ValueError("Can't use both multi_gpu and TPU's")
         self.cpu_merge = cpu_merge
         self.cpu_relocation = cpu_relocation
         self.load_only_weights = load_only_weights
         self.enable_multi_gpu = enable_multi_gpu
+        if self.use_tpu is not None and self.enable_multi_gpu:
+            raise ValueError("Can't use both multi_gpu and TPU's")
         self.model_builder_options = model_builder_options
         if 'input_shapes' not in self.model_builder_options:
             self.model_builder_options.update(input_shapes=self.input_shapes)
