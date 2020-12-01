@@ -24,6 +24,7 @@ class KerasModel(RasterModel):
                  optimizer=None,
                  destination=None,  # Hugin specific
                  checkpoint=None,  # Hugin specific
+                 use_tpu=None,
                  enable_multi_gpu=False,  # Hugin specific
                  num_gpus=2,  # Number of GPU's to use
                  cpu_merge=True,  #
@@ -51,7 +52,10 @@ class KerasModel(RasterModel):
         self.model_path = model_path
         self.destination = destination
         self.checkpoint = checkpoint
+        self.use_tpu = use_tpu
         self.num_gpus = num_gpus
+        if self.use_tpu is not None and self.enable_multi_gpu:
+            raise ValueError("Can't use both multi_gpu and TPU's")
         self.cpu_merge = cpu_merge
         self.cpu_relocation = cpu_relocation
         self.load_only_weights = load_only_weights
@@ -97,7 +101,15 @@ class KerasModel(RasterModel):
         import tensorflow as tf
         log.info("Loading keras model from %s", self.model_path)
         if not self.load_only_weights:
-            if self.enable_multi_gpu:
+            if self.use_tpu:
+                resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu='grpc://' + os.environ['COLAB_TPU_ADDR'])
+                tf.config.experimental_connect_to_cluster(resolver)
+                tf.tpu.experimental.initialize_tpu_system(resolver)
+                log.info("All TPU devices: %s", tf.config.list_logical_devices('TPU'))
+                strategy = tf.distribute.TPUStrategy(resolver)
+                with strategy.scope():
+                    self.model = load_model(self.model_path, custom_objects=self.custom_objects)
+            elif self.enable_multi_gpu:
                 with tf.device('/cpu:0'):
                     self.model = load_model(self.model_path, custom_objects=self.custom_objects)
             else:
