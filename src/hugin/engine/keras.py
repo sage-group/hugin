@@ -102,10 +102,12 @@ class KerasModel(RasterModel):
         log.info("Loading keras model from %s", self.model_path)
         if not self.load_only_weights:
             if self.use_tpu:
+                print ("Using TPU")
                 resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu='grpc://' + os.environ['COLAB_TPU_ADDR'])
                 tf.config.experimental_connect_to_cluster(resolver)
                 tf.tpu.experimental.initialize_tpu_system(resolver)
                 log.info("All TPU devices: %s", tf.config.list_logical_devices('TPU'))
+                print("All TPU devices:", tf.config.list_logical_devices('TPU'))
                 strategy = tf.distribute.TPUStrategy(resolver)
                 with strategy.scope():
                     self.model = load_model(self.model_path, custom_objects=self.custom_objects)
