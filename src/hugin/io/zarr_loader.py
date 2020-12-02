@@ -191,9 +191,6 @@ class ZarrArrayLoader(ArrayLoader):
             self.outputs[output_name] = from_zarr(source, **kwds)
             if shape is not None:
                 outer_dimension = self.outputs[output_name].shape[0]
-                print ("Outer Dimension: ", outer_dimension)
-                print (f"Output {output_name} has declared shape: ", tuple(shape))
-                print ("Reshape Dimension: ", (outer_dimension,) + tuple(shape))
                 self.outputs[output_name] = self.outputs[output_name].reshape((outer_dimension,) + tuple(shape))
 
     def __str__(self):

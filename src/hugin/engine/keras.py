@@ -126,7 +126,7 @@ class KerasModel(RasterModel):
         log.info("Finished loading")
         return self.model
 
-    def __create_model(self, train_data=None):
+    def __create_model(self, train_data=None, compile_model=None):
         import tensorflow as tf
         if self.use_tpu:
             print("Using TPU")
@@ -137,7 +137,10 @@ class KerasModel(RasterModel):
             print("All TPU devices:", tf.config.list_logical_devices('TPU'))
             strategy = tf.distribute.TPUStrategy(resolver)
             with strategy.scope():
-                return self.__create_model_impl(train_data)
+                model = self.__create_model_impl(train_data)
+                if compile_model:
+                    compile_model
+                return model
         elif self.enable_multi_gpu:
             with tf.device('/cpu:0'):
                 return self.__create_model_impl(train_data)
@@ -191,9 +194,17 @@ class KerasModel(RasterModel):
             log.info("Loading existing model")
             model = self.__load_model()
         else:
-            model = self.__create_model(train_data)
+            def compile_model(_model):
+                _model.compile(self.optimizer,
+                              loss=self.loss,
+                              loss_weights=self.loss_weights,
+                              metrics=self.keras_metrics
+                              )
+
+
             if self.enable_multi_gpu:
                 log.info("Using Keras Multi-GPU Training")
+                model = self.__create_model(train_data, compile_model=None)
                 gpus = self.num_gpus
                 if gpus is None:
                     gpus = os.environ['HUGIN_KERAS_GPUS']
@@ -204,11 +215,9 @@ class KerasModel(RasterModel):
                                         cpu_merge=cpu_merge,
                                         cpu_relocation=cpu_relocation)
 
-            model.compile(self.optimizer,
-                          loss=self.loss,
-                          loss_weights=self.loss_weights,
-                          metrics=self.keras_metrics
-                          )
+                compile_model(model)
+            else:
+                model = self.__create_model(train_data, compile_model=compile_model)
             print(model.summary())
 
         callbacks = []
