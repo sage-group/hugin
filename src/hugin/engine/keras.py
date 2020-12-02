@@ -3,7 +3,6 @@ import math
 import os
 from logging import getLogger
 
-from tensorflow.keras.utils import multi_gpu_model
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.models import load_model
 from tensorflow.keras.utils import Sequence
@@ -210,6 +209,7 @@ class KerasModel(RasterModel):
                     gpus = os.environ['HUGIN_KERAS_GPUS']
                 cpu_merge = self.cpu_merge
                 cpu_relocation = self.cpu_relocation
+                from tensorflow.keras.utils import multi_gpu_model
                 model = multi_gpu_model(model,
                                         gpus=gpus,
                                         cpu_merge=cpu_merge,
