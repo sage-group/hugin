@@ -139,7 +139,7 @@ class KerasModel(RasterModel):
             with strategy.scope():
                 model = self.__create_model_impl(train_data)
                 if compile_model:
-                    compile_model
+                    compile_model(model)
                 return model
         elif self.enable_multi_gpu:
             with tf.device('/cpu:0'):
