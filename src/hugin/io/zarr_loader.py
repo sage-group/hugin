@@ -64,6 +64,12 @@ class ArraySequence(Sequence):
     def get_real_length(self) -> int:
         return len(self.selected_indices)
 
+    def __iter__(self):
+        def __iterator():
+            for i in range(0, len(self)):
+                yield self[i]
+        return __iterator
+
     def __getitem__(self, idx):
         inputs = {}
         outputs = {}
