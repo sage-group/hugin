@@ -83,7 +83,12 @@ class KerasModel(RasterModel):
         self.keras_metrics = metrics
 
         if model_builder:
-            model_builder, model_builder_custom_options = import_model_builder(model_builder)
+            if isinstance(model_builder, str):
+                model_builder, model_builder_custom_options = import_model_builder(model_builder)
+            elif callable(model_builder):
+                model_builder_custom_options = getattr(model_builder, 'custom_objects', {})
+            else:
+                raise TypeError("Unsupported model builder specification!")
             self.model_builder = model_builder
             self.custom_objects.update(model_builder_custom_options)
             if 'name' not in self.model_builder_options:
