@@ -245,7 +245,7 @@ def flatten_generator_data(data):
     return tuple(result)
 
 
-class ZarrArrayLoaderTFData(hugin.io.ZarrArrayLoader):
+class ZarrArrayLoaderTFData(ZarrArrayLoader):
     def __init__(self, *args, **kwargs):
         super(ZarrArrayLoaderTFData, self).__init__(*args, **kwargs)
 
