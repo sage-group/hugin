@@ -145,7 +145,10 @@ class KerasModel(RasterModel):
             with tf.device('/cpu:0'):
                 return self.__create_model_impl(train_data)
         else:
-            return self.__create_model_impl(train_data)
+            model = self.__create_model_impl(train_data)
+            if compile_model:
+                compile_model(model)
+            return model
 
     def __extract_shapes(self, spec):
         pass
