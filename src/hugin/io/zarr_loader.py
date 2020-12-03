@@ -185,8 +185,6 @@ class ZarrArrayLoader(ArrayLoader):
                     self.input_standardizers[input_name] = np.array(
                         from_zarr(source, standardizers, storage_options=self.storage_options))
             kwds.update(component=input_path)
-            print(f"Kwds: {kwds}")
-            print(f"storage_options: {self.storage_options}")
             self.inputs[input_name] = from_zarr(source, **kwds, storage_options=self.storage_options)
             if shape is not None:
                 self.inputs[input_name] = self.inputs[input_name].reshape(shape)
