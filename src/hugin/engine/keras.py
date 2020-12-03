@@ -155,6 +155,8 @@ class KerasModel(RasterModel):
         model_builder_options = self.model_builder_options
         if model_builder_options.get('input_shapes') is None:
             if self.input_shapes is None:
+                if isinstance(train_data, Dataset):
+                    raise ValueError("Tensorflow Dataset based sources require `input_shapes` specification")
                 shapes = train_data.get_input_shapes()
                 model_builder_options["input_shapes"] = shapes
             else:
