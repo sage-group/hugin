@@ -6,6 +6,7 @@ from logging import getLogger
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.models import load_model
 from tensorflow.keras.utils import Sequence
+from tensorflow.data import Dataset
 
 
 from hugin.engine.core import RasterModel
@@ -171,6 +172,8 @@ class KerasModel(RasterModel):
         if self.steps_per_epoch is None:
             if isinstance(train_data, Sequence):
                 pass
+            elif isinstance(validation_data, Dataset):
+                pass
             else:
                 steps_per_epoch = math.ceil(len(train_data) / self.batch_size)
                 fit_options.update(steps_per_epoch=steps_per_epoch)
@@ -181,13 +184,16 @@ class KerasModel(RasterModel):
             if validation_data is not None:
                 if isinstance(validation_data, Sequence):
                     pass
+                elif isinstance(validation_data, Dataset):
+                    pass
                 else:
                     validation_steps_per_epoch = math.ceil(len(validation_data) / self.batch_size)
                     fit_options.update(steps_per_epoch=validation_steps_per_epoch)
             else:
                 validation_steps_per_epoch = None
         else:
-            fit_options.update(steps_per_epoch=validation_steps_per_epoch)
+            fit_options.update(steps_per_epoch=self.validation_steps_per_epoch)
+
 
         if os.path.exists(self.model_path):
             log.info("Loading existing model")
