@@ -20,7 +20,8 @@ class ArraySequence(Sequence):
                  standardisers: dict = None,
                  selected_indices: Array = None,
                  randomise: bool = False,
-                 maximum_samples: int = None):
+                 maximum_samples: int = None,
+                 sample_weights = None):
 
         self.input_component_mapping = input_component_mapping
         self.output_component_mapping = output_component_mapping
@@ -29,6 +30,7 @@ class ArraySequence(Sequence):
         self.batch_size = batch_size if batch_size is not None else 1
         self.maximum_samples = maximum_samples
         self.standardisers = standardisers
+        self.sample_weights = sample_weights
 
     @property
     def selected_indices(self):
@@ -107,7 +109,10 @@ class ArraySequence(Sequence):
 
         source = {k: np.array(np.stack(v)) for k, v in inputs.items()}
         targets = {k: np.array(np.stack(v)) for k, v in outputs.items()}
-        return source, targets
+        result = [source, targets]
+        if self.sample_weights is not None:
+            result.append(self.sample_weights)
+        return tuple(result)
 
     def get_input_shapes(self):
         shapes = {}
@@ -125,7 +130,9 @@ class ZarrArrayLoader(ArrayLoader):
                  split_train_index_array: Array = None,
                  randomise: bool = False,
                  maximum_training_samples: int = None,
-                 maximum_validation_samples: int = None):
+                 maximum_validation_samples: int = None,
+                 class_weights = None,
+                 sample_weights = None):
         super(ZarrArrayLoader, self).__init__()
         self.inputs = {}
         self.input_standardizers = {}
@@ -136,6 +143,8 @@ class ZarrArrayLoader(ArrayLoader):
         self.randomise = randomise
         self.maximum_training_samples = maximum_training_samples
         self.maximum_validation_samples = maximum_validation_samples
+        self.class_weights = class_weights
+        self.sample_weights = sample_weights
         if source is None:
             if 'DATASOURCE_URL' not in os.environ:
                 raise TypeError(
@@ -145,6 +154,7 @@ class ZarrArrayLoader(ArrayLoader):
                 log.info(f"Using storage configuration from environment file `DATASOURCE_URL`: {source}")
         up = urlparse(source)
         storage_options = {}
+        print (up)
         if not up.scheme:
             self.source = source
         else:
@@ -170,6 +180,25 @@ class ZarrArrayLoader(ArrayLoader):
         if self.split_train_index_array_path:
             self.split_train_index_array = from_zarr(source, component=self.split_train_index_array_path,
                                                      storage_options=storage_options)
+
+        if self.class_weights is not None:
+            if isinstance(self.class_weights, str): # We received a path inside the `source`:
+                arr = from_zarr(source, component=self.class_weights, storage_options=storage_options)
+                self.class_weights = arr
+            elif isinstance(self.class_weights, Array):
+                self.class_weights = np.array(self.class_weights)
+            else:
+                raise NotImplementedError("No support for the specified type of class_weights")
+
+        if self.sample_weights is not None:
+            if isinstance(self.sample_weights, str): # We received a path inside the `source`:
+                arr = from_zarr(source, component=self.sample_weights, storage_options=storage_options)
+                self.sample_weights = arr
+            elif isinstance(self.sample_weights, Array):
+                self.sample_weights = np.array(self.sample_weights)
+            else:
+                raise NotImplementedError("No support for the specified type of sample_weights")
+
 
         for input_name, input_path in inputs.items():
             shape = None
@@ -234,6 +263,17 @@ class ZarrArrayLoader(ArrayLoader):
     def get_mask(self):
         raise NotImplementedError()
 
+    def get_class_weights(self):
+        if self.class_weights is None:
+            return None
+        else:
+            return np.array(self.class_weights)
+
+    def get_sample_weights(self):
+        if self.sample_weights is None:
+            return None
+        else:
+            return np.array(self.sample_weights)
 
 def flatten_generator_data(data):
     keys = sorted(list(data.keys()))

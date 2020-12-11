@@ -3,10 +3,11 @@ import math
 import os
 from logging import getLogger
 
+import tensorflow as tf
+
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.models import load_model
 from tensorflow.keras.utils import Sequence
-from tensorflow.data import Dataset
 
 
 from hugin.engine.core import RasterModel
@@ -46,9 +47,11 @@ class KerasModel(RasterModel):
                  load_only_weights=False,
                  metrics=None,
                  custom_objects={},
+                 random_seed=None,
                  **kwargs):
         RasterModel.__init__(self, *args, **kwargs)
         self.custom_objects = custom_objects
+        self.random_seed = random_seed
         self.model_path = model_path
         self.destination = destination
         self.checkpoint = checkpoint
@@ -163,7 +166,7 @@ class KerasModel(RasterModel):
         model_builder_options = self.model_builder_options
         if model_builder_options.get('input_shapes') is None:
             if self.input_shapes is None:
-                if isinstance(train_data, Dataset):
+                if isinstance(train_data, tf.data.Dataset):
                     raise ValueError("Tensorflow Dataset based sources require `input_shapes` specification")
                 shapes = train_data.get_input_shapes()
                 model_builder_options["input_shapes"] = shapes
@@ -176,13 +179,20 @@ class KerasModel(RasterModel):
         self.model = model
         return model
 
-    def fit_generator(self, train_data, validation_data=None):
+    def fit_generator(self, train_data, validation_data=None, class_weights=None, sample_weights=None):
         log.info("Training from generators")
+        if self.random_seed is not None:
+            import tensorflow as tf
+            import numpy as np
+            import random
+            random.seed(self.random_seed)
+            np.random.seed(self.random_seed)
+            tf.random.set_seed(self.random_seed)
         fit_options = {}
         if self.steps_per_epoch is None:
             if isinstance(train_data, Sequence):
                 pass
-            elif isinstance(validation_data, Dataset):
+            elif isinstance(validation_data, tf.data.Dataset):
                 pass
             else:
                 steps_per_epoch = math.ceil(len(train_data) / self.batch_size)
@@ -194,7 +204,7 @@ class KerasModel(RasterModel):
             if validation_data is not None:
                 if isinstance(validation_data, Sequence):
                     pass
-                elif isinstance(validation_data, Dataset):
+                elif isinstance(validation_data, tf.data.Dataset):
                     pass
                 else:
                     validation_steps_per_epoch = math.ceil(len(validation_data) / self.batch_size)
@@ -277,10 +287,14 @@ class KerasModel(RasterModel):
                            use_multiprocessing=self.use_multiprocessing,
                            shuffle=self.shuffle,
                            initial_epoch=self.initial_epoch)
+        if class_weights is not None:
+            fit_options["class_weight"] = class_weights
+        if sample_weights is not None:
+            fit_options["sample_weight"] = sample_weights
 
         print (fit_options)
 
-        model.fit_generator(train_data, **fit_options)
+        model.fit(train_data, **fit_options)
 
     def save(self, destination=None):
         log.info("Saving Keras model to %s", destination)

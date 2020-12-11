@@ -57,7 +57,9 @@ def train_handler(args):
 
     elif isinstance(trainer, ArrayModel):
         log.info("Training using an array model")
-        trainer.train(data_source)
+        import dask
+        with dask.config.set(scheduler='threads', num_workers=8):
+            trainer.train(data_source)
     else:
         raise NotImplementedError("Specified trainer type is not supported")
 

@@ -1,6 +1,8 @@
 import re
 import os
 import math
+
+import fsspec
 import tqdm
 
 import h5py
@@ -157,11 +159,32 @@ class ArrayModelTrainer(ArrayModel):
     def train(self, data_source : ZarrArrayLoader):
         training = data_source.get_training(self.model.batch_size)
         validation = data_source.get_validation(self.model.batch_size)
+        class_weights = data_source.get_class_weights()
+        sample_weights = data_source.get_sample_weights()
         if self.model.destination is None:
             self.model.destination = self.destination
         options = {}
         log.info("Running training from %s", self.model_name)
-        self.model.fit_generator(training, validation, **options)
+
+        if sample_weights is None:
+            pass
+        elif isinstance(sample_weights, (np.ndarray, np.generic)):
+            pass
+        else:
+            raise NotImplementedError()
+
+        if class_weights is None:
+            pass
+        elif isinstance(class_weights, (np.ndarray, np.generic)):
+            weights = {}
+            for i in range(0, len(class_weights)):
+                weights[i] = class_weights[i]
+            class_weights = weights
+        elif isinstance(class_weights, dict):
+            pass
+        else:
+            raise NotImplementedError("Unsupported representation for class weights: {}".format(type(class_weights)))
+        self.model.fit_generator(training, validation, class_weights, sample_weights, **options)
 
 class ArrayModelPredictor(ArrayModel):
     def __init__(self, *args, **kwargs):
@@ -444,10 +467,13 @@ class ArrayExporter(SceneExporter):
 
         up = urlparse(zarr_dataset)
         storage_options = {}
+        self.component = up.path
+        self.parent = ""
         if not up.scheme:
             self.zarr_dataset = zarr_dataset
         else:
-            zarr_dataset = f"{up.scheme}://{up.netloc}{up.path}"
+            zarr_dataset = f"{up.scheme}://{up.netloc}"
+            self.parent = up.netloc
             for k,v in parse_qs(up.query, keep_blank_values=True).items():
                 value = v[0] if v[0] else None
                 storage_options[k]=value
@@ -465,7 +491,9 @@ class ArrayExporter(SceneExporter):
         test_data = loader.get_test(batch_size=batch_size)
         real_length = test_data.get_real_length()
         length = len(test_data)
-        dataset = zarr.open(self.zarr_dataset, "a", storage_options=self.storage_options)
+        of = fsspec.open(self.zarr_dataset, "a", **self.storage_options)
+        mapper = of.fs.get_mapper(self.parent + self.component)
+        dataset = zarr.group(store=mapper, cache_attrs=False)
 
         if not length:
             log.warning("No data for prediction")
@@ -480,6 +508,7 @@ class ArrayExporter(SceneExporter):
             pass
 
         last_idx = 0
+
         for i in tqdm.tqdm(range(0, length)):
             #print (i, batch_size, test_data[i][0]['input_1'].shape)
             predict_data = test_data[i][0]
