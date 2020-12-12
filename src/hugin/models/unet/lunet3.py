@@ -7,17 +7,18 @@ from tensorflow.keras.models import Model
 def encode_block_lstm(size, inputs, kernel, stride, activation, kinit, padding, max_pool=True,
                       batch_normalization=False, mask=None):
     result = []
+    use_bias = not batch_normalization
     x, state_h, state_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride, activation=activation,
-                                     kernel_initializer=kinit,
+                                     kernel_initializer=kinit, use_bias=use_bias,
                                      padding=padding, return_sequences=True, return_state=True)(inputs, mask=mask)
-    #x = BatchNormalization()(x) if batch_normalization else x
+    x = BatchNormalization()(x) if batch_normalization else x
 
     x, state_h, state_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride, activation=activation,
-                                     kernel_initializer=kinit,
+                                     kernel_initializer=kinit, use_bias=use_bias,
                                      padding=padding, return_sequences=True, return_state=True)(x,
                                                                                                 mask=mask)  # can't set initial_state=(state_h, state_c) due to a bug in keras
 
-    #x = BatchNormalization()(x) if batch_normalization else x
+    x = BatchNormalization()(x) if batch_normalization else x
     # result.append(x)
     result.append(state_c)
 
@@ -65,7 +66,7 @@ def conv_t_block(size, input_1, input_2, kernel, stride, activation, kinit, padd
     conv2 = Activation(activation)(conv2)
 
     conv3 = Convolution2D(256, kernel_size=kernel, strides=stride, kernel_initializer=kinit,
-                          padding=padding)(conv2)
+                          padding=padding, use_bias=False)(conv2)
     conv3 = BatchNormalization()(conv3) if batch_normalization else conv2
     conv3 = Activation(activation)(conv3)
 
@@ -95,11 +96,11 @@ def unet_rrn(
 
     # Encoding
     conv1_output_last, pool1 = encode_block_lstm(32, inputs, kernel, stride, activation, kinit, padding, mask=mask,
-                                                 batch_normalization=batch_norm)
+                                                 batch_normalization=False)
     conv2_output_last, pool2 = encode_block_lstm(64, pool1, kernel, stride, activation, kinit, padding,
-                                                 batch_normalization=batch_norm)
+                                                 batch_normalization=False)
     conv3_output_last, _ = encode_block_lstm(128, pool2, kernel, stride, activation, kinit, padding, max_pool=False,
-                                             batch_normalization=batch_norm)
+                                             batch_normalization=False)
     pool3 = MaxPooling2D(pool_size=(2, 2))(conv3_output_last)
     conv4_output_last, pool4 = encode_block(256, pool3, kernel, stride, activation, kinit, padding,
                                             batch_normalization=batch_norm)
@@ -119,7 +120,6 @@ def unet_rrn(
                          batch_normalization=batch_norm)
 
     # Output
-    conv9 = BatchNormalization()(conv9) if batch_norm else conv9
 
     conv9 = Cropping2D((mpadd, mpadd))(conv9)
 
