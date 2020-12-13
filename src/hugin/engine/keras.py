@@ -16,6 +16,8 @@ from hugin.tools.utils import import_model_builder
 
 log = getLogger(__name__)
 
+class ExtendedCheckpoint():
+    pass
 
 class KerasModel(RasterModel):
     def __init__(self,

@@ -8,17 +8,19 @@ def encode_block_lstm(size, inputs, kernel, stride, activation, kinit, padding, 
                       batch_normalization=False, mask=None):
     result = []
     use_bias = not batch_normalization
-    x, state_h, state_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride, activation=activation,
+    x, state_h, state_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride,
                                      kernel_initializer=kinit, use_bias=use_bias,
                                      padding=padding, return_sequences=True, return_state=True)(inputs, mask=mask)
     x = BatchNormalization()(x) if batch_normalization else x
+    x = Activation(activation)(x)
 
-    x, state_h, state_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride, activation=activation,
+    x, state_h, state_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride,
                                      kernel_initializer=kinit, use_bias=use_bias,
                                      padding=padding, return_sequences=True, return_state=True)(x,
                                                                                                 mask=mask)  # can't set initial_state=(state_h, state_c) due to a bug in keras
 
     x = BatchNormalization()(x) if batch_normalization else x
+    x = Activation(activation)(x)
     # result.append(x)
     result.append(state_c)
 
@@ -97,11 +99,11 @@ def unet_rrn(
 
     # Encoding
     conv1_output_last, pool1 = encode_block_lstm(32, inputs, kernel, stride, activation, kinit, padding, mask=mask,
-                                                 batch_normalization=False)
+                                                 batch_normalization=True)
     conv2_output_last, pool2 = encode_block_lstm(64, pool1, kernel, stride, activation, kinit, padding,
-                                                 batch_normalization=False)
+                                                 batch_normalization=True)
     conv3_output_last, _ = encode_block_lstm(128, pool2, kernel, stride, activation, kinit, padding, max_pool=False,
-                                             batch_normalization=False)
+                                             batch_normalization=True)
     pool3 = MaxPooling2D(pool_size=(2, 2))(conv3_output_last)
     conv4_output_last, pool4 = encode_block(256, pool3, kernel, stride, activation, kinit, padding,
                                             batch_normalization=batch_norm)

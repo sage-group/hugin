@@ -1,6 +1,7 @@
 import math
 import os
 import sys
+import random
 import numpy as np
 from logging import getLogger
 
@@ -129,6 +130,7 @@ class ZarrArrayLoader(ArrayLoader):
                  split_test_index_array: Array = None,
                  split_train_index_array: Array = None,
                  randomise: bool = False,
+                 random_seed: int = None,
                  maximum_training_samples: int = None,
                  maximum_validation_samples: int = None,
                  class_weights = None,
@@ -141,10 +143,14 @@ class ZarrArrayLoader(ArrayLoader):
         self.split_test_index_array = None
         self.split_train_index_array = None
         self.randomise = randomise
+        self.random_seed = random_seed
         self.maximum_training_samples = maximum_training_samples
         self.maximum_validation_samples = maximum_validation_samples
         self.class_weights = class_weights
         self.sample_weights = sample_weights
+        if self.random_seed is not None:
+            np.random.seed(self.random_seed)
+            random.seed(self.random_seed)
         if source is None:
             if 'DATASOURCE_URL' not in os.environ:
                 raise TypeError(
