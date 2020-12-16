@@ -1,6 +1,8 @@
 import re
 import os
 import math
+import threading
+from concurrent.futures.thread import ThreadPoolExecutor
 
 import fsspec
 import tqdm
@@ -8,6 +10,7 @@ import tqdm
 import h5py
 import numpy as np
 #import rasterio
+import concurrent.futures
 import zarr
 from urllib.parse import urlparse, parse_qs
 
@@ -459,6 +462,20 @@ class SceneExporter(object):
             self.save_scene(scene_id, scene_data, prediction)
             overall_metrics[scene_id] = metrics
 
+class _Threaded_Array_Saver(threading.Thread):
+    def __init__(self, destination_array, save_q):
+        self.save_q = save_q
+        super(_Threaded_Array_Saver, self).__init__()
+
+    def run(self):
+        while True:
+            idxs = self.save_q.get()
+            if idxs is None:
+                break
+            pred_idx, dest_idx, destination_array, prediction_result = idxs
+            #log.debug(f"Saving dest_idx:{dest_idx} <-> pred_idx:{pred_idx} %s %s", destination_array.shape, prediction_result.shape)
+            destination_array[dest_idx, ...] = prediction_result[pred_idx, ...]
+            #log.debug(f"Done saving {dest_idx} <-> {pred_idx}")
 
 class ArrayExporter(SceneExporter):
     def __init__(self, zarr_dataset, destination_array, *args, **kwargs):
@@ -487,7 +504,7 @@ class ArrayExporter(SceneExporter):
         self.storage_options = storage_options
 
     def flow_prediction_from_array_loader(self, loader, predictor):
-        batch_size = 10
+        batch_size = predictor.model.batch_size
         test_data = loader.get_test(batch_size=batch_size)
         real_length = test_data.get_real_length()
         length = len(test_data)
@@ -509,12 +526,20 @@ class ArrayExporter(SceneExporter):
 
         last_idx = 0
 
+        from queue import Queue
+        save_q = Queue(maxsize=batch_size*3)
+
+        threads = []
+
+
         for i in tqdm.tqdm(range(0, length)):
             #print (i, batch_size, test_data[i][0]['input_1'].shape)
-            predict_data = test_data[i][0]
-            log.info("Starting prediction")
+            x, y = test_data[i]
+            predict_data = x
+            #log.info("Starting prediction")
             prediction_result = predictor.predict(predict_data)
-            log.info("Finished prediction")
+            #log.info("Finished prediction")
+            #print (prediction_result.shape)
             if destination_array is None:
                 prediction_shape = prediction_result.shape[1:]
                 destination_array_shape = (real_length, ) + prediction_shape
@@ -524,13 +549,26 @@ class ArrayExporter(SceneExporter):
                                                   chunks=destination_array_chunks,
                                                   shape=destination_array_shape,
                                                   overwrite=True)
-            prediction_length = len(prediction_result)
-            log.info("Saving predictions")
-            for pred_idx, dest_idx in enumerate(range(last_idx, last_idx+prediction_length)):
-                destination_array[dest_idx, ...] = prediction_result[pred_idx, ...]
-            last_idx = dest_idx+1
-            log.info("Finished saving")
+                for i in range(0, batch_size * 2):
+                    log.debug(f"Starting thread {i}/{batch_size}")
+                    thread = _Threaded_Array_Saver(destination_array, save_q)
+                    thread.setDaemon(True)
+                    thread.start()
+                    threads.append(thread)
 
+            prediction_length = len(prediction_result)
+           # log.info("Saving predictions")
+            for pred_idx, dest_idx in enumerate(range(last_idx, last_idx + prediction_length)):
+                save_q.put((pred_idx, dest_idx, destination_array, prediction_result))
+            last_idx = last_idx+prediction_length
+            #log.info("Finished saving")
+        log.debug("Signaling threads we have finished")
+        for _ in threads: save_q.put(None)
+
+        log.debug("Waiting for threads to finish")
+        for th in threads:
+            th.join()
+        log.info("Prediction finished")
 
 
 class MultipleFormatExporter(SceneExporter):
