@@ -1,6 +1,6 @@
 from tensorflow.keras.layers import ConvLSTM2D
 from tensorflow.keras.layers import Input, concatenate, MaxPooling2D, Cropping2D, Convolution2D, \
-    Convolution2DTranspose, BatchNormalization, MaxPooling3D, Activation, LeakyReLU
+    Convolution2DTranspose, BatchNormalization, MaxPooling3D, Activation, LeakyReLU, PReLU
 from tensorflow.keras.models import Model
 
 
@@ -12,7 +12,7 @@ def encode_block_lstm(size, inputs, kernel, stride, activation, kinit, padding, 
                                      kernel_initializer=kinit, use_bias=use_bias, activation='linear',
                                      padding=padding, return_sequences=True, return_state=True)(inputs, mask=mask)
     x = BatchNormalization()(x) if batch_normalization else x
-    x = LeakyReLU()(x) # In theory this should avoid the vanishing gradient situation that is, arguably more accute with RNNs
+    x = PReLU()(x) # In theory this should avoid the vanishing gradient situation that is, arguably more accute with RNNs
 
     x, state_h, state_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride,
                                      kernel_initializer=kinit, use_bias=use_bias, activation='linear',
@@ -20,7 +20,7 @@ def encode_block_lstm(size, inputs, kernel, stride, activation, kinit, padding, 
                                                                                                 mask=mask)  # can't set initial_state=(state_h, state_c) due to a bug in keras
 
     x = BatchNormalization()(x) if batch_normalization else x
-    x = LeakyReLU()(x)
+    x = PReLU()(x)
     # result.append(x)
     result.append(state_c)
 
