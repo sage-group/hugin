@@ -169,6 +169,10 @@ class ArrayModelTrainer(ArrayModel):
         options = {}
         log.info("Running training from %s", self.model_name)
 
+        if sample_weights is not None:
+            log.warning("Currently Tensorflow does not support specifying the wights and they are supposed to be inluced in the generator/sequence. IGNORING")
+            sample_weights = None
+
         if sample_weights is None:
             pass
         elif isinstance(sample_weights, (np.ndarray, np.generic)):

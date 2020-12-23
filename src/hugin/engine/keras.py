@@ -50,6 +50,7 @@ class KerasModel(RasterModel):
                  metrics=None,
                  custom_objects={},
                  random_seed=None,
+                 sample_weight_mode=None,
                  **kwargs):
         RasterModel.__init__(self, *args, **kwargs)
         self.custom_objects = custom_objects
@@ -85,6 +86,7 @@ class KerasModel(RasterModel):
         self.optimizer = optimizer
         self.loss = loss
         self.loss_weights = loss_weights
+        self.sample_weight_mode = sample_weight_mode
         self.keras_metrics = metrics
 
         if model_builder:
@@ -223,10 +225,11 @@ class KerasModel(RasterModel):
         else:
             def compile_model(_model):
                 _model.compile(self.optimizer,
-                              loss=self.loss,
-                              loss_weights=self.loss_weights,
-                              metrics=self.keras_metrics
-                              )
+                               loss=self.loss,
+                               loss_weights=self.loss_weights,
+                               metrics=self.keras_metrics,
+                               sample_weight_mode=self.sample_weight_mode
+                               )
 
 
             if self.enable_multi_gpu:
@@ -293,6 +296,8 @@ class KerasModel(RasterModel):
             fit_options["class_weight"] = class_weights
         if sample_weights is not None:
             fit_options["sample_weight"] = sample_weights
+        if self.sample_weight_mode is not None and 'sample_weight_mode' in fit_options:
+            fit_options.pop("sample_weight_mode")
 
         print (fit_options)
 

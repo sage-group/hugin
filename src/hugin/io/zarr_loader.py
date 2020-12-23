@@ -22,7 +22,8 @@ class ArraySequence(Sequence):
                  selected_indices: Array = None,
                  randomise: bool = False,
                  maximum_samples: int = None,
-                 sample_weights = None):
+                 sample_weights = None,
+                 slice_timestamps: list = None):
 
         self.input_component_mapping = input_component_mapping
         self.output_component_mapping = output_component_mapping
@@ -32,6 +33,18 @@ class ArraySequence(Sequence):
         self.maximum_samples = maximum_samples
         self.standardisers = standardisers
         self.sample_weights = sample_weights
+        self.slice_timestamps = slice_timestamps
+
+        if self.slice_timestamps is not None:
+            assert isinstance(self.slice_timestamps, (tuple, list)), "Timestamp slice should be list or tuple"
+            assert len(self.slice_timestamps) == 3 or len(self.slice_timestamps) == 2
+            if len(self.slice_timestamps) == 3:
+                self.start_slice_idx, self.end_slice_idx, self.slice_step = self.slice_timestamps
+            elif len(self.slice_timestamps) == 2:
+                self.start_slice_idx, self.end_slice_idx = self.slice_timestamps
+                self.slice_step = 1
+            else:
+                raise NotImplementedError()
 
     @property
     def selected_indices(self):
@@ -90,6 +103,8 @@ class ArraySequence(Sequence):
                 if key not in inputs:
                     inputs[key] = []
                 dask_data = value[idx]
+                if self.slice_timestamps:
+                    dask_data = dask_data[self.start_slice_idx:self.end_slice_idx:self.slice_step, ...]
                 # log.debug(f"Fetching data for {idx} from value of {key}={value}")
                 data = np.array(dask_data)
                 # log.debug(f"Fetched data for {idx} from value of {key}={value}")
@@ -118,6 +133,8 @@ class ArraySequence(Sequence):
     def get_input_shapes(self):
         shapes = {}
         for key, value in self.input_component_mapping.items():
+            if self.slice_timestamps:
+                value = value[:, self.start_slice_idx:self.end_slice_idx:self.slice_step, ...]
             shapes[key] = value.shape[1:]
         return shapes
 
@@ -134,7 +151,8 @@ class ZarrArrayLoader(ArrayLoader):
                  maximum_training_samples: int = None,
                  maximum_validation_samples: int = None,
                  class_weights = None,
-                 sample_weights = None):
+                 sample_weights = None,
+                 slice_timestamps = None):
         super(ZarrArrayLoader, self).__init__()
         self.inputs = {}
         self.input_standardizers = {}
@@ -148,6 +166,7 @@ class ZarrArrayLoader(ArrayLoader):
         self.maximum_validation_samples = maximum_validation_samples
         self.class_weights = class_weights
         self.sample_weights = sample_weights
+        self.slice_timestamps = slice_timestamps
         if self.random_seed is not None:
             np.random.seed(self.random_seed)
             random.seed(self.random_seed)
@@ -202,6 +221,8 @@ class ZarrArrayLoader(ArrayLoader):
                 self.sample_weights = arr
             elif isinstance(self.sample_weights, Array):
                 self.sample_weights = np.array(self.sample_weights)
+            elif isinstance(self.sample_weights, list):
+                self.sample_weights = np.array(self.sample_weights, dtype=np.float32)
             else:
                 raise NotImplementedError("No support for the specified type of sample_weights")
 
@@ -252,19 +273,19 @@ class ZarrArrayLoader(ArrayLoader):
         """
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_train_index_array,
                              randomise=self.randomise, maximum_samples=self.maximum_training_samples,
-                             standardisers=self.input_standardizers)
+                             standardisers=self.input_standardizers, sample_weights=self.sample_weights, slice_timestamps=self.slice_timestamps)
 
     def get_validation(self, batch_size: int) -> ArraySequence:
         if self.split_test_index_array is None:
             return None
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array,
                              randomise=self.randomise, maximum_samples=self.maximum_validation_samples,
-                             standardisers=self.input_standardizers)
+                             standardisers=self.input_standardizers, slice_timestamps=self.slice_timestamps)
 
     def get_test(self, batch_size: int) -> ArraySequence:
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array,
                              randomise=self.randomise, maximum_samples=self.maximum_validation_samples,
-                             standardisers=self.input_standardizers)
+                             standardisers=self.input_standardizers, slice_timestamps=self.slice_timestamps)
 
     def get_mask(self):
         raise NotImplementedError()
