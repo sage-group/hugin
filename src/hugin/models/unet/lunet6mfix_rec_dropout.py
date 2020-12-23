@@ -1,22 +1,22 @@
 from tensorflow.keras.layers import ConvLSTM2D
 from tensorflow.keras.layers import Input, concatenate, MaxPooling2D, Cropping2D, Convolution2D, \
-    Convolution2DTranspose, BatchNormalization, MaxPooling3D, Activation, LeakyReLU, PReLU
+    Convolution2DTranspose, BatchNormalization, MaxPooling3D, Activation, LeakyReLU, PReLU, Dropout
 from tensorflow.keras.models import Model
 
 
 def encode_block_lstm(size, inputs, kernel, stride, activation, kinit, padding, max_pool=True,
-                      batch_normalization=False, mask=None, recurent_dropout=None):
+                      batch_normalization=False, mask=None, recurrent_dropout=None):
     result = []
     use_bias = not batch_normalization
     x, state_h, state_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride,
                                      kernel_initializer=kinit, use_bias=use_bias, activation='linear',
-                                     padding=padding, return_sequences=True, return_state=True, recurent_dropout=recurent_dropout)(inputs, mask=mask)
+                                     padding=padding, return_sequences=True, return_state=True, recurrent_dropout=recurrent_dropout)(inputs, mask=mask)
     x = BatchNormalization()(x) if batch_normalization else x
     x = PReLU()(x) # In theory this should avoid the vanishing gradient situation that is, arguably more accute with RNNs
 
     x, state_h, state_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride,
                                      kernel_initializer=kinit, use_bias=use_bias, activation='linear',
-                                     padding=padding, return_sequences=True, return_state=True, recurent_dropout=recurent_dropout)(x,
+                                     padding=padding, return_sequences=True, return_state=True, recurrent_dropout=recurrent_dropout)(x,
                                                                                                 mask=mask)  # can't set initial_state=(state_h, state_c) due to a bug in keras
 
     x = BatchNormalization()(x) if batch_normalization else x
@@ -52,7 +52,7 @@ def encode_block(size, inputs, kernel, stride, activation, kinit, padding, batch
     return conv1, pool1
 
 
-def conv_t_block(size, input_1, input_2, kernel, stride, activation, kinit, padding, axis, batch_normalization=False):
+def conv_t_block(size, input_1, input_2, kernel, stride, activation, kinit, padding, axis, batch_normalization=False, dropout=None):
     use_bias = not batch_normalization
 
     conv1 = Convolution2DTranspose(256, (2, 2), strides=(2, 2), padding=padding, use_bias=use_bias)(input_1)
@@ -67,6 +67,8 @@ def conv_t_block(size, input_1, input_2, kernel, stride, activation, kinit, padd
                           padding=padding, use_bias=use_bias)(conv1)
     conv2 = BatchNormalization()(conv2) if batch_normalization else conv2
     conv2 = Activation(activation)(conv2)
+    if dropout is not None:
+        conv2 = Dropout(rate=dropout)(conv2)
 
     conv3 = Convolution2D(256, kernel_size=kernel, strides=stride, kernel_initializer=kinit,
                           padding=padding, use_bias=False)(conv2)
@@ -90,6 +92,8 @@ def unet_rrn(
         axis=3,
         crop=0,
         mpadd=0,
+        recurrent_dropout=None,
+        dropout=None
 ):
     nr_classes = output_channels
     timeseries, input_1_height, input_1_width, input_1_channels = input_shapes["input_1"]
@@ -99,27 +103,27 @@ def unet_rrn(
 
     # Encoding
     conv1_output_last, pool1 = encode_block_lstm(32, inputs, kernel, stride, activation, kinit, padding, mask=mask,
-                                                 batch_normalization=True)
+                                                 batch_normalization=True, recurrent_dropout=recurrent_dropout)
     conv2_output_last, pool2 = encode_block_lstm(64, pool1, kernel, stride, activation, kinit, padding,
-                                                 batch_normalization=True)
+                                                 batch_normalization=True, recurrent_dropout=recurrent_dropout)
     conv3_output_last, pool3 = encode_block_lstm(128, pool2, kernel, stride, activation, kinit, padding,
-                                             batch_normalization=True)
+                                             batch_normalization=True, recurrent_dropout=recurrent_dropout)
     conv4_output_last, pool4 = encode_block_lstm(256, pool3, kernel, stride, activation, kinit, padding,
-                                            batch_normalization=True)
+                                            batch_normalization=True, recurrent_dropout=recurrent_dropout)
 
     # Middle
     conv5_output_last, _ = encode_block_lstm(512, pool4, kernel, stride, activation, kinit, padding, max_pool=False,
-                                        batch_normalization=True)
+                                        batch_normalization=True, recurrent_dropout=recurrent_dropout)
 
     # Decoding
     conv6 = conv_t_block(256, conv5_output_last, conv4_output_last, kernel, stride, activation, kinit, padding, axis,
-                         batch_normalization=batch_norm)
+                         batch_normalization=batch_norm, dropout=dropout)
     conv7 = conv_t_block(128, conv6, conv3_output_last, kernel, stride, activation, kinit, padding, axis,
-                         batch_normalization=batch_norm)
+                         batch_normalization=batch_norm, dropout=dropout)
     conv8 = conv_t_block(64, conv7, conv2_output_last, kernel, stride, activation, kinit, padding, axis,
-                         batch_normalization=batch_norm)
+                         batch_normalization=batch_norm, dropout=dropout)
     conv9 = conv_t_block(32, conv8, conv1_output_last, kernel, stride, activation, kinit, padding, axis,
-                         batch_normalization=batch_norm)
+                         batch_normalization=batch_norm, dropout=dropout)
 
     # Output
 

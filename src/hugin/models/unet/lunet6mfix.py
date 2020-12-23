@@ -5,7 +5,7 @@ from tensorflow.keras.models import Model
 
 
 def encode_block_lstm(size, inputs, kernel, stride, activation, kinit, padding, max_pool=True,
-                      batch_normalization=False, mask=None):
+                      batch_normalization=False, mask=None, recurent_dropout=None):
     result = []
     use_bias = not batch_normalization
     x, state_h, state_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride,
@@ -104,14 +104,12 @@ def unet_rrn(
                                                  batch_normalization=True)
     conv3_output_last, pool3 = encode_block_lstm(128, pool2, kernel, stride, activation, kinit, padding,
                                              batch_normalization=True)
-
-    conv4_output_last, _ = encode_block_lstm(256, pool3, kernel, stride, activation, kinit, padding,
-                                            batch_normalization=batch_norm, max_pool=False)
-    pool4 = MaxPooling2D(pool_size=(2, 2))(conv4_output_last)
+    conv4_output_last, pool4 = encode_block_lstm(256, pool3, kernel, stride, activation, kinit, padding,
+                                            batch_normalization=True)
 
     # Middle
-    conv5_output_last, _ = encode_block(512, pool4, kernel, stride, activation, kinit, padding, max_pool=False,
-                                        batch_normalization=batch_norm)
+    conv5_output_last, _ = encode_block_lstm(512, pool4, kernel, stride, activation, kinit, padding, max_pool=False,
+                                        batch_normalization=True)
 
     # Decoding
     conv6 = conv_t_block(256, conv5_output_last, conv4_output_last, kernel, stride, activation, kinit, padding, axis,
