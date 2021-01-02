@@ -14,16 +14,20 @@ from hugin.engine.core import RasterModel
 from hugin.tools.callbacks import CSVLogger
 from hugin.tools.utils import import_model_builder
 
+from traitlets import Unicode, Integer, observe
+
 log = getLogger(__name__)
 
 class ExtendedCheckpoint():
     pass
 
 class KerasModel(RasterModel):
+    checkpoint_subdirectory = Unicode(default_value="checkpoints")
+    resume_checkpoint = Integer(allow_none=True, default_value=None)
+
     def __init__(self,
-                 model_path,
-                 model_builder,
-                 *args,
+                 model_path=None,
+                 model_builder=None,
                  optimizer=None,
                  destination=None,  # Hugin specific
                  checkpoint=None,  # Hugin specific
@@ -38,6 +42,7 @@ class KerasModel(RasterModel):
                  epochs=1000,
                  verbose=1,
                  callbacks=None,
+                 resume_checkpoint=None,
                  class_weight=None,
                  max_queue_size=10,
                  workers=0,
@@ -51,17 +56,20 @@ class KerasModel(RasterModel):
                  custom_objects={},
                  random_seed=None,
                  sample_weight_mode=None,
+                 _global_options={},
                  **kwargs):
-        RasterModel.__init__(self, *args, **kwargs)
+        RasterModel.__init__(self, **kwargs)
         self.custom_objects = custom_objects
         self.random_seed = random_seed
         self.model_path = model_path
-        self.destination = destination
+        self.base_directory = destination
         self.checkpoint = checkpoint
+        self.resume_checkpoint = resume_checkpoint
         self.use_tpu = use_tpu
         self.num_gpus = num_gpus
         self.cpu_merge = cpu_merge
         self.cpu_relocation = cpu_relocation
+        self._global_options = _global_options
         self.load_only_weights = load_only_weights
         self.enable_multi_gpu = enable_multi_gpu
         if self.use_tpu and self.enable_multi_gpu:
@@ -109,9 +117,61 @@ class KerasModel(RasterModel):
         prediction = self.model.predict(batch, batch_size=batch_size)
         return prediction
 
-    def __load_model(self):
+    def resolve_model_path(self, path):
+        epoch = int(os.path.basename(path).split("-")[1])
+        #1/0
+        return path, epoch
+
+    def find_model(self, checkpoint_epoch=None):
+        if self.base_directory is None:
+            raise ValueError("Workspace/destination directory not specified")
+        if not os.path.exists(self.base_directory):
+            log.debug("Based directory does not exist: %s", self.base_directory)
+            return None
+        final_model_path = os.path.join(self.base_directory, "model.hdf5")
+
+        if os.path.exists(final_model_path):
+            log.debug("Loading final model from: %s", final_model_path)
+            return final_model_path, None
+
+        checkpoint_directory = os.path.join(self.base_directory, self.checkpoint_subdirectory)
+        if os.path.exists(checkpoint_directory):
+            chkps = [chk for chk in os.listdir(checkpoint_directory) if chk.endswith(".hdf5")]
+            if not chkps:
+                log.debug("No checkpoints found in %s", checkpoint_directory)
+                return None
+            chkps.sort(key=lambda x: int(x.split("-")[1]))
+            if checkpoint_epoch is not None:
+                log.debug("Filtering according to resume epoch")
+                chkps = list(filter(lambda x: int(x.split("-")[1]) == checkpoint_epoch, chkps))
+            if not chkps:
+                log.warning("No checkpoints have been found")
+                return None
+
+            chckpt_name = chkps[-1]
+            chckpt_epoch = int(chckpt_name.split("-")[1])
+            return os.path.join(checkpoint_directory, chckpt_name), chckpt_epoch
+        else:
+            log.info("No checkpoints found in %s", checkpoint_directory)
+            return None
+
+    def update_options(self, options : dict):
+        1/0
+        self._global_options.update(options)
+
+    def __load_model(self, model_path):
         import tensorflow as tf
-        log.info("Loading keras model from %s", self.model_path)
+        model_epoch = None
+        log.info("Loading keras model from %s", model_path)
+        if model_path is None:
+            #raise ValueError("model_path not specified")
+            model_path, model_epoch = self.find_model(self.resume_checkpoint)
+            log.info(f"Using model (epoch {model_epoch}) from {model_path}")
+        else:
+            model_path, model_epoch = self.resolve_model_path(model_path)
+
+        if model_path is None:
+            raise ValueError("No model could be loaded")
         if not self.load_only_weights:
             if self.use_tpu:
                 print ("Using TPU")
@@ -122,12 +182,12 @@ class KerasModel(RasterModel):
                 print("All TPU devices:", tf.config.list_logical_devices('TPU'))
                 strategy = tf.distribute.TPUStrategy(resolver)
                 with strategy.scope():
-                    self.model = load_model(self.model_path, custom_objects=self.custom_objects)
+                    self.model = load_model(model_path, custom_objects=self.custom_objects)
             elif self.enable_multi_gpu:
                 with tf.device('/cpu:0'):
-                    self.model = load_model(self.model_path, custom_objects=self.custom_objects)
+                    self.model = load_model(model_path, custom_objects=self.custom_objects)
             else:
-                self.model = load_model(self.model_path, custom_objects=self.custom_objects)
+                self.model = load_model(model_path, custom_objects=self.custom_objects)
 
         else:
             if self.enable_multi_gpu:
@@ -135,8 +195,8 @@ class KerasModel(RasterModel):
                     self.model = self.__create_model()
             else:
                 self.model = self.__create_model()
-        log.info("Finished loading")
-        return self.model
+        log.info(f"Finished loading: {model_path} epoch {model_epoch}")
+        return self.model, model_epoch
 
     def __create_model(self, train_data=None, compile_model=None):
         import tensorflow as tf
@@ -218,10 +278,23 @@ class KerasModel(RasterModel):
         else:
             fit_options.update(steps_per_epoch=self.validation_steps_per_epoch)
 
+        if self.model_path is None:
+            model_info = self.find_model(self.resume_checkpoint)
+            if model_info is None:
+                model_path = None
+                model_epoch = None
+            else:
+                model_path, model_epoch = model_info
 
-        if os.path.exists(self.model_path):
+        if model_path is None:
+            log.info("Model can't be resumed")
+
+        if model_path and os.path.exists(model_path):
             log.info("Loading existing model")
-            model = self.__load_model()
+            model, model_epoch = self.__load_model(model_path)
+            if model_epoch is not None:
+                log.info(f"Resuming from epoch: {model_epoch}")
+                fit_options.update(initial_epoch=model_epoch)
         else:
             def compile_model(_model):
                 _model.compile(self.optimizer,
@@ -259,10 +332,10 @@ class KerasModel(RasterModel):
         log.debug(f"Checkpoint: {self.checkpoint}")
         log.debug(f"Validation data: {validation_data}")
         if self.checkpoint and validation_data is not None:
-            if not self.destination is not None:
+            if not self.base_directory is not None:
                 log.warning("Destination not specified. Checkpoints will not be saved")
             else:
-                log.info(f"Checkpoints will be saved in {self.destination}")
+                log.info(f"Checkpoints will be saved in {self.base_directory}")
                 monitor = self.checkpoint.get('monitor', 'val_loss')
                 verbose = self.checkpoint.get('verbose', 1)
                 save_best_only = self.checkpoint.get('save_best_only', False)
@@ -270,16 +343,16 @@ class KerasModel(RasterModel):
                 mode = self.checkpoint.get('mode', 'auto')
                 period = self.checkpoint.get('period', 1)
                 filename = self.checkpoint.get('filename', "checkpoint-{epoch:03d}-{val_loss:.4f}.hdf5")
-                checkpoint_destination = os.path.join(self.destination, "checkpoints")
+                checkpoint_destination = os.path.join(self.base_directory, "checkpoints")
                 if not os.path.exists(checkpoint_destination):
                     os.makedirs(checkpoint_destination)
                 filepath = os.path.join(checkpoint_destination, filename)
-                log.info("Registering model checkpoing")
+                log.info("Registering model checkpointing")
                 callbacks.append(ModelCheckpoint(filepath=filepath, monitor=monitor, verbose=verbose,
                                                  save_best_only=save_best_only, save_weights_only=save_weights_only,
                                                  mode=mode, period=period))
-        if self.destination is not None and validation_data is not None:
-            log_destination = os.path.join(self.destination, "logs.txt")
+        if self.base_directory is not None and validation_data is not None:
+            log_destination = os.path.join(self.base_directory, "logs.txt")
             callbacks.append(CSVLogger(log_destination))
 
         fit_options.update(epochs=self.epochs,
@@ -290,16 +363,13 @@ class KerasModel(RasterModel):
                            max_queue_size=self.max_queue_size,
                            workers=self.workers,
                            use_multiprocessing=self.use_multiprocessing,
-                           shuffle=self.shuffle,
-                           initial_epoch=self.initial_epoch)
+                           shuffle=self.shuffle)
         if class_weights is not None:
             fit_options["class_weight"] = class_weights
         if sample_weights is not None:
             fit_options["sample_weight"] = sample_weights
         if self.sample_weight_mode is not None and 'sample_weight_mode' in fit_options:
             fit_options.pop("sample_weight_mode")
-
-        print (fit_options)
 
         model.fit(train_data, **fit_options)
 

@@ -28,17 +28,18 @@ def train_handler(args):
     with config_file as f:
         config = yaml.load(f, Loader=Loader)
 
+    experiment_configuration = config.get("configuration", {})
+    experiment_configuration['args'] = args
+
     data_source = config.get("data_source", None)
     trainer = config["trainer"]
-    training_configuration = config["configuration"]
 
-    destination = training_configuration.get("model_path") if training_configuration is not None else None
-    keys = {
-        'name': trainer.model_name
-    }
-    if destination is not None:
-        destination = destination.format(**keys)
-    trainer.destination = destination
+    workspace_directory = experiment_configuration.get('workspace', None)
+    if workspace_directory is not None:
+        workspace_directory = workspace_directory.format(**experiment_configuration)
+
+    if workspace_directory and trainer.base_directory is None:
+        trainer.base_directory = workspace_directory
 
     if isinstance(trainer, RasterSceneTrainer):
         if input_dir is not None:
