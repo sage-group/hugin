@@ -69,7 +69,7 @@ class ArraySequence(Sequence):
         self.__shuffle_indices()
 
     def __shuffle_indices(self):
-        if self.randomise:
+        if self.randomise and self.__selected_indices is not None:
             np.random.shuffle(self.__selected_indices)
 
     def on_epoch_end(self):
