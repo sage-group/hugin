@@ -144,6 +144,7 @@ class ZarrArrayLoader(ArrayLoader):
                  inputs: dict,
                  targets: dict,
                  source=None,
+                 flat: bool = True,
                  split_test_index_array: Array = None,
                  split_train_index_array: Array = None,
                  randomise: bool = False,
@@ -155,6 +156,7 @@ class ZarrArrayLoader(ArrayLoader):
                  slice_timestamps = None):
         super(ZarrArrayLoader, self).__init__()
         self.inputs = {}
+        self.flat = flat
         self.input_standardizers = {}
         self.split_test_index_array_path = split_test_index_array
         self.split_train_index_array_path = split_train_index_array
@@ -238,10 +240,16 @@ class ZarrArrayLoader(ArrayLoader):
                 shape = input_path.get('sample_reshape', None)
                 input_path = input_path.get('component')
                 if standardizers is not None:
-                    self.input_standardizers[input_name] = np.array(
-                        from_zarr(source, standardizers, storage_options=self.storage_options))
+                    zarr_array = from_zarr(source, standardizers, storage_options=self.storage_options)
+                    self.input_standardizers[input_name] = np.array(zarr_array)
             kwds.update(component=input_path)
-            self.inputs[input_name] = from_zarr(source, **kwds, storage_options=self.storage_options)
+            zarr_array = from_zarr(source, **kwds, storage_options=self.storage_options)
+            if not self.flat:
+                shp = zarr_array.shape
+                new_shp = (shp[0]*shp[1], )+shp[2:]
+                log.info(f"Reshaping {input_name} from {shp} to {new_shp}")
+                zarr_array = zarr_array.reshape(new_shp)
+            self.inputs[input_name] = zarr_array
             if shape is not None:
                 self.inputs[input_name] = self.inputs[input_name].reshape(shape)
         self.outputs = {}
@@ -256,7 +264,13 @@ class ZarrArrayLoader(ArrayLoader):
                 output_path = output_path.get('component')
             kwds.update(component=output_path)
             kwds.update(storage_options=self.storage_options)
-            self.outputs[output_name] = from_zarr(source, **kwds)
+            zarr_array = from_zarr(source, **kwds, storage_options=self.storage_options)
+            if not self.flat:
+                shp = zarr_array.shape
+                new_shp = (shp[0]*shp[1], )+shp[2:]
+                log.info(f"Reshaping {output_name} from {shp} to {new_shp}")
+                zarr_array = zarr_array.reshape(new_shp)
+            self.outputs[output_name] = zarr_array
             if shape is not None:
                 outer_dimension = self.outputs[output_name].shape[0]
                 self.outputs[output_name] = self.outputs[output_name].reshape((outer_dimension,) + tuple(shape))
