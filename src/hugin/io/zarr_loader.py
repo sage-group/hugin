@@ -264,7 +264,7 @@ class ZarrArrayLoader(ArrayLoader):
                 output_path = output_path.get('component')
             kwds.update(component=output_path)
             kwds.update(storage_options=self.storage_options)
-            zarr_array = from_zarr(source, **kwds, storage_options=self.storage_options)
+            zarr_array = from_zarr(source, **kwds)
             if not self.flat:
                 shp = zarr_array.shape
                 new_shp = (shp[0]*shp[1], )+shp[2:]
