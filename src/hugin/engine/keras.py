@@ -278,6 +278,8 @@ class KerasModel(RasterModel):
         else:
             fit_options.update(steps_per_epoch=self.validation_steps_per_epoch)
 
+        model_path = None
+
         if self.model_path is None:
             model_info = self.find_model(self.resume_checkpoint)
             if model_info is None:
