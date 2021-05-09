@@ -25,7 +25,7 @@ class ArraySequence(Sequence):
                  selected_indices: Array = None,
                  randomise: bool = False,
                  maximum_samples: int = None,
-                 sample_weights = None,
+                 sample_weights=None,
                  slice_timestamps: list = None,
                  flat: bool = True):
 
@@ -115,7 +115,7 @@ class ArraySequence(Sequence):
                     inputs[key] = []
                 idx = self._get_real_idx(flat_idx, value.shape[0], value.shape[1])
                 if len(idx) == 2:
-                    dask_data = value[idx[0],idx[1], ...]
+                    dask_data = value[idx[0], idx[1], ...]
                 else:
                     dask_data = value[idx]
                 if self.slice_timestamps:
@@ -146,7 +146,7 @@ class ArraySequence(Sequence):
     def get_input_shapes(self):
         shapes = {}
         for key, value in self.input_component_mapping.items():
-            #if self.slice_timestamps:
+            # if self.slice_timestamps:
             #    print (value.shape, self.slice_timestamps)
             #    value = value[:, self.start_slice_idx:self.end_slice_idx:self.slice_step, ...]
             if self.flat:
@@ -154,7 +154,7 @@ class ArraySequence(Sequence):
             else:
                 shp = value.shape[2:]
             if self.slice_timestamps:
-                shp = (self.end_slice_idx-self.start_slice_idx, ) + shp[1:]
+                shp = (self.end_slice_idx - self.start_slice_idx,) + shp[1:]
             shapes[key] = shp
         return shapes
 
@@ -171,9 +171,9 @@ class ZarrArrayLoader(ArrayLoader):
                  random_seed: int = None,
                  maximum_training_samples: int = None,
                  maximum_validation_samples: int = None,
-                 class_weights = None,
-                 sample_weights = None,
-                 slice_timestamps = None):
+                 class_weights=None,
+                 sample_weights=None,
+                 slice_timestamps=None):
         super(ZarrArrayLoader, self).__init__()
         self.inputs = {}
         self.flat = flat
@@ -234,7 +234,7 @@ class ZarrArrayLoader(ArrayLoader):
             self.split_train_index_array = np.array(self.source[self.split_train_index_array_path])
 
         if self.class_weights is not None:
-            if isinstance(self.class_weights, str): # We received a path inside the `source`:
+            if isinstance(self.class_weights, str):  # We received a path inside the `source`:
                 self.class_weights = np.array(self.source[self.class_weights])
             elif isinstance(self.class_weights, Array):
                 self.class_weights = np.array(self.class_weights)
@@ -242,7 +242,7 @@ class ZarrArrayLoader(ArrayLoader):
                 raise NotImplementedError("No support for the specified type of class_weights")
 
         if self.sample_weights is not None:
-            if isinstance(self.sample_weights, str): # We received a path inside the `source`:
+            if isinstance(self.sample_weights, str):  # We received a path inside the `source`:
                 self.sample_weights = np.array(self.source[self.sample_weights])
             elif isinstance(self.sample_weights, Array):
                 self.sample_weights = np.array(self.sample_weights)
@@ -265,13 +265,13 @@ class ZarrArrayLoader(ArrayLoader):
                     zarr_array = from_zarr(source, standardizers, storage_options=self.storage_options)
                     self.input_standardizers[input_name] = np.array(zarr_array)
             kwds.update(component=input_path)
-            #zarr_array = from_zarr(source, **kwds, storage_options=self.storage_options)
+            # zarr_array = from_zarr(source, **kwds, storage_options=self.storage_options)
             zarr_array = self.source[input_path].view(fill_value=0)
-            #zarr_array = from_zarr(self.source[input_path])
-            #zarr_array = zarr_array.view(fill_value=0)
+            # zarr_array = from_zarr(self.source[input_path])
+            # zarr_array = zarr_array.view(fill_value=0)
             self.inputs[input_name] = zarr_array
             if shape is not None:
-                1/0
+                1 / 0
                 self.inputs[input_name] = self.inputs[input_name].reshape(shape)
         self.outputs = {}
         for output_name, output_path in targets.items():
@@ -288,7 +288,7 @@ class ZarrArrayLoader(ArrayLoader):
             zarr_array = self.source[output_path].view(fill_value=0)
             self.outputs[output_name] = zarr_array
             if shape is not None:
-                1/0
+                1 / 0
                 outer_dimension = self.outputs[output_name].shape[0]
                 self.outputs[output_name] = self.outputs[output_name].reshape((outer_dimension,) + tuple(shape))
 
@@ -304,19 +304,22 @@ class ZarrArrayLoader(ArrayLoader):
         """
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_train_index_array,
                              randomise=self.randomise, maximum_samples=self.maximum_training_samples,
-                             standardisers=self.input_standardizers, sample_weights=self.sample_weights, slice_timestamps=self.slice_timestamps, flat=self.flat)
+                             standardisers=self.input_standardizers, sample_weights=self.sample_weights,
+                             slice_timestamps=self.slice_timestamps, flat=self.flat)
 
     def get_validation(self, batch_size: int) -> ArraySequence:
         if self.split_test_index_array is None:
             return None
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array,
                              randomise=self.randomise, maximum_samples=self.maximum_validation_samples,
-                             standardisers=self.input_standardizers, slice_timestamps=self.slice_timestamps, flat=self.flat)
+                             standardisers=self.input_standardizers, slice_timestamps=self.slice_timestamps,
+                             flat=self.flat)
 
     def get_test(self, batch_size: int) -> ArraySequence:
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array,
                              randomise=self.randomise, maximum_samples=self.maximum_validation_samples,
-                             standardisers=self.input_standardizers, slice_timestamps=self.slice_timestamps, flat=self.flat)
+                             standardisers=self.input_standardizers, slice_timestamps=self.slice_timestamps,
+                             flat=self.flat)
 
     def get_mask(self):
         raise NotImplementedError()
@@ -332,6 +335,7 @@ class ZarrArrayLoader(ArrayLoader):
             return None
         else:
             return np.array(self.sample_weights)
+
 
 def flatten_generator_data(data):
     keys = sorted(list(data.keys()))
