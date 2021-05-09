@@ -6,6 +6,11 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from traitlets import HasTraits, Unicode, observe
 
+try:
+    from tensorflow.keras.utils import to_categorical
+except ImportError:
+    from keras.utils import to_categorical
+
 log = getLogger(__name__)
 
 
@@ -75,6 +80,44 @@ class CategoricalConverter(object):
         prediction = np.argmax(probability_array, -1).astype(np.uint8)
         return prediction.reshape(prediction.shape + (1,))
 
+class GTICategoricalConverter(object):
+    def __init__(self, num_classes=2, channel_last=True):
+        self._num_classes = num_classes
+        self._channel_last = channel_last
+
+    def __call__(self, entry):
+        #print (self, entry.shape)
+        entry = entry.reshape(entry.shape + (1, ))
+        entry = np.squeeze(entry)
+        cat = to_categorical(entry, self._num_classes)
+        #print ("CAT:", cat.shape)
+        if not self._channel_last:
+            #print ("Reshape Needed")
+            #cat = np.swapaxes(np.swapaxes(cat, 0, 1), 1, 2)
+            cat = np.swapaxes(np.swapaxes(cat, 2, 1), 1, 0) # how an I save?
+            print (cat.shape)
+            #1/0
+        return cat
+
+class BaseTransformer(object):
+    def __call__(self, *args, **kwargs):
+        raise NotImplementedError()
+
+class TransformToCategorical(GTICategoricalConverter):
+    def __init__(self, *args, **kw):
+        GTICategoricalConverter.__init__(self, )
+
+class TransformSparseMaskToCategorical(TransformToCategorical):
+    def __init__(self, class_id):
+        TransformToCategorical.__init__(self, num_classes=2, channel_last=False)
+        self.class_id = class_id
+
+    def __call__(self, sequence, data):
+        data = data == self.class_id
+        #print ("Old: ", data.shape)
+        data = TransformToCategorical.__call__(self, data)
+        #print("New: ", data.shape)
+        return data
 
 class RasterModel(HasTraits):
     base_directory = Unicode(allow_none=True)

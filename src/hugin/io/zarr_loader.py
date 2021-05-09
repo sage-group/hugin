@@ -27,7 +27,10 @@ class ArraySequence(Sequence):
                  maximum_samples: int = None,
                  sample_weights=None,
                  slice_timestamps: list = None,
-                 flat: bool = True):
+                 flat: bool = True,
+                 input_transformers: list = {},
+                 output_transformers: list = {},
+                 ):
 
         self.input_component_mapping = input_component_mapping
         self.output_component_mapping = output_component_mapping
@@ -39,6 +42,8 @@ class ArraySequence(Sequence):
         self.sample_weights = sample_weights
         self.slice_timestamps = slice_timestamps
         self.flat = flat
+        self.input_transformers = input_transformers
+        self.output_transformers = output_transformers
 
         if self.slice_timestamps is not None:
             assert isinstance(self.slice_timestamps, (tuple, list)), "Timestamp slice should be list or tuple"
@@ -134,7 +139,13 @@ class ArraySequence(Sequence):
             for key, value in self.output_component_mapping.items():
                 if key not in outputs:
                     outputs[key] = []
-                outputs[key].append(value[idx])
+                idx = self._get_real_idx(flat_idx, value.shape[0], value.shape[1])
+                array_data = value[idx]
+                #log.debug (f"Output transformers: {self.output_transformers}")
+                transformers = self.output_transformers.get(key, [])
+                for transformer in transformers:
+                    array_data = transformer(self, array_data)
+                outputs[key].append(array_data)
 
         source = {k: np.array(np.stack(v)) for k, v in inputs.items()}
         targets = {k: np.array(np.stack(v)) for k, v in outputs.items()}
@@ -189,6 +200,8 @@ class ZarrArrayLoader(ArrayLoader):
         self.class_weights = class_weights
         self.sample_weights = sample_weights
         self.slice_timestamps = slice_timestamps
+        self.input_transformers = {}
+        self.output_transformers = {}
         if self.random_seed is not None:
             np.random.seed(self.random_seed)
             random.seed(self.random_seed)
@@ -259,11 +272,13 @@ class ZarrArrayLoader(ArrayLoader):
                 if dask_chunk_size is not None:
                     kwds.update(chunks=dask_chunk_size)
                 standardizers = input_path.get('standardizers')
-                shape = input_path.get('sample_reshape', None)
-                input_path = input_path.get('component')
                 if standardizers is not None:
                     zarr_array = from_zarr(source, standardizers, storage_options=self.storage_options)
                     self.input_standardizers[input_name] = np.array(zarr_array)
+                shape = input_path.get('sample_reshape', None)
+                transformers = input_path.get('transformers', [])
+                self.input_transformers[input_name] = transformers
+                input_path = input_path.get('component')
             kwds.update(component=input_path)
             # zarr_array = from_zarr(source, **kwds, storage_options=self.storage_options)
             zarr_array = self.source[input_path].view(fill_value=0)
@@ -281,6 +296,8 @@ class ZarrArrayLoader(ArrayLoader):
                 dask_chunk_size = output_path.get('dask_chunk_size')
                 if dask_chunk_size is not None:
                     kwds.update(chunks=dask_chunk_size)
+                transformers = output_path.get('transformers', [])
+                self.output_transformers[output_name] = transformers
                 shape = output_path.get('sample_reshape', None)
                 output_path = output_path.get('component')
             kwds.update(component=output_path)
@@ -305,7 +322,8 @@ class ZarrArrayLoader(ArrayLoader):
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_train_index_array,
                              randomise=self.randomise, maximum_samples=self.maximum_training_samples,
                              standardisers=self.input_standardizers, sample_weights=self.sample_weights,
-                             slice_timestamps=self.slice_timestamps, flat=self.flat)
+                             slice_timestamps=self.slice_timestamps, flat=self.flat,
+                             input_transformers=self.input_transformers, output_transformers=self.output_transformers)
 
     def get_validation(self, batch_size: int) -> ArraySequence:
         if self.split_test_index_array is None:
