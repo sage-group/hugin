@@ -5,8 +5,11 @@ import random
 import numpy as np
 from logging import getLogger
 
+import zarr
+
 from .dataset_loaders import ArrayLoader
 from dask.array import from_zarr, Array
+from zarr.storage import LRUStoreCache
 from tensorflow.keras.utils import Sequence
 from urllib.parse import urlparse, parse_qs
 
@@ -23,7 +26,8 @@ class ArraySequence(Sequence):
                  randomise: bool = False,
                  maximum_samples: int = None,
                  sample_weights = None,
-                 slice_timestamps: list = None):
+                 slice_timestamps: list = None,
+                 flat: bool = True):
 
         self.input_component_mapping = input_component_mapping
         self.output_component_mapping = output_component_mapping
@@ -34,6 +38,7 @@ class ArraySequence(Sequence):
         self.standardisers = standardisers
         self.sample_weights = sample_weights
         self.slice_timestamps = slice_timestamps
+        self.flat = flat
 
         if self.slice_timestamps is not None:
             assert isinstance(self.slice_timestamps, (tuple, list)), "Timestamp slice should be list or tuple"
@@ -89,25 +94,33 @@ class ArraySequence(Sequence):
 
         return __iterator
 
-    def __getitem__(self, idx):
+    def _get_real_idx(self, idx, height, width):
+        if self.flat:
+            return idx
+        row, col = idx // width, idx % width
+        return (row, col)
+
+    def __getitem__(self, requested_index):
         inputs = {}
         outputs = {}
 
         indices = self.selected_indices
 
-        start_idx = idx * self.batch_size
-        end_idx = (idx + 1) * self.batch_size
+        start_idx = requested_index * self.batch_size
+        end_idx = (requested_index + 1) * self.batch_size
 
-        for idx in indices[start_idx:end_idx]:
+        for flat_idx in indices[start_idx:end_idx]:
             for key, value in self.input_component_mapping.items():
                 if key not in inputs:
                     inputs[key] = []
-                dask_data = value[idx]
+                idx = self._get_real_idx(flat_idx, value.shape[0], value.shape[1])
+                if len(idx) == 2:
+                    dask_data = value[idx[0],idx[1], ...]
+                else:
+                    dask_data = value[idx]
                 if self.slice_timestamps:
                     dask_data = dask_data[self.start_slice_idx:self.end_slice_idx:self.slice_step, ...]
-                # log.debug(f"Fetching data for {idx} from value of {key}={value}")
                 data = np.array(dask_data)
-                # log.debug(f"Fetched data for {idx} from value of {key}={value}")
                 standardiser = self.standardisers.get(key) if self.standardisers else None
                 if standardiser is not None:
                     data = data.astype(np.float64)
@@ -133,9 +146,16 @@ class ArraySequence(Sequence):
     def get_input_shapes(self):
         shapes = {}
         for key, value in self.input_component_mapping.items():
+            #if self.slice_timestamps:
+            #    print (value.shape, self.slice_timestamps)
+            #    value = value[:, self.start_slice_idx:self.end_slice_idx:self.slice_step, ...]
+            if self.flat:
+                shp = value.shape[1:]
+            else:
+                shp = value.shape[2:]
             if self.slice_timestamps:
-                value = value[:, self.start_slice_idx:self.end_slice_idx:self.slice_step, ...]
-            shapes[key] = value.shape[1:]
+                shp = (self.end_slice_idx-self.start_slice_idx, ) + shp[1:]
+            shapes[key] = shp
         return shapes
 
 
@@ -181,9 +201,9 @@ class ZarrArrayLoader(ArrayLoader):
                 log.info(f"Using storage configuration from environment file `DATASOURCE_URL`: {source}")
         up = urlparse(source)
         storage_options = {}
-        print (up)
         if not up.scheme:
             self.source = source
+            self.source = zarr.open_group(source, mode="r", storage_options=storage_options)
         else:
             source = f"{up.scheme}://{up.netloc}{up.path}"
             for k, v in parse_qs(up.query, keep_blank_values=True).items():
@@ -196,22 +216,26 @@ class ZarrArrayLoader(ArrayLoader):
                         'endpoint_url': s3_endpoint
                     }
 
+                import s3fs
+                s3 = s3fs.S3FileSystem(anon=False, **storage_options)
+                s3_store = s3fs.S3Map(root=f'{up.netloc}{up.path}', s3=s3, check=False)
+                self.source = zarr.group(store=s3_store, overwrite=False)
+            else:
+                self.source = zarr.open_group(source, mode="r", storage_options=storage_options, cache_attrs=False)
+
         self.storage_options = storage_options
-        self.source = source
+
         log.info("Randomise: %s", self.randomise)
         log.info("Max training samples: %s", self.maximum_training_samples)
         log.info("Max validation samples: %s", self.maximum_validation_samples)
         if self.split_test_index_array_path:
-            self.split_test_index_array = from_zarr(source, component=self.split_test_index_array_path,
-                                                    storage_options=storage_options)
+            self.split_test_index_array = np.array(self.source[self.split_test_index_array_path])
         if self.split_train_index_array_path:
-            self.split_train_index_array = from_zarr(source, component=self.split_train_index_array_path,
-                                                     storage_options=storage_options)
+            self.split_train_index_array = np.array(self.source[self.split_train_index_array_path])
 
         if self.class_weights is not None:
             if isinstance(self.class_weights, str): # We received a path inside the `source`:
-                arr = from_zarr(source, component=self.class_weights, storage_options=storage_options)
-                self.class_weights = arr
+                self.class_weights = np.array(self.source[self.class_weights])
             elif isinstance(self.class_weights, Array):
                 self.class_weights = np.array(self.class_weights)
             else:
@@ -219,15 +243,13 @@ class ZarrArrayLoader(ArrayLoader):
 
         if self.sample_weights is not None:
             if isinstance(self.sample_weights, str): # We received a path inside the `source`:
-                arr = from_zarr(source, component=self.sample_weights, storage_options=storage_options)
-                self.sample_weights = arr
+                self.sample_weights = np.array(self.source[self.sample_weights])
             elif isinstance(self.sample_weights, Array):
                 self.sample_weights = np.array(self.sample_weights)
             elif isinstance(self.sample_weights, list):
                 self.sample_weights = np.array(self.sample_weights, dtype=np.float32)
             else:
                 raise NotImplementedError("No support for the specified type of sample_weights")
-
 
         for input_name, input_path in inputs.items():
             shape = None
@@ -243,14 +265,13 @@ class ZarrArrayLoader(ArrayLoader):
                     zarr_array = from_zarr(source, standardizers, storage_options=self.storage_options)
                     self.input_standardizers[input_name] = np.array(zarr_array)
             kwds.update(component=input_path)
-            zarr_array = from_zarr(source, **kwds, storage_options=self.storage_options)
-            if not self.flat:
-                shp = zarr_array.shape
-                new_shp = (shp[0]*shp[1], )+shp[2:]
-                log.info(f"Reshaping {input_name} from {shp} to {new_shp}")
-                zarr_array = zarr_array.reshape(new_shp)
+            #zarr_array = from_zarr(source, **kwds, storage_options=self.storage_options)
+            zarr_array = self.source[input_path].view(fill_value=0)
+            #zarr_array = from_zarr(self.source[input_path])
+            #zarr_array = zarr_array.view(fill_value=0)
             self.inputs[input_name] = zarr_array
             if shape is not None:
+                1/0
                 self.inputs[input_name] = self.inputs[input_name].reshape(shape)
         self.outputs = {}
         for output_name, output_path in targets.items():
@@ -264,14 +285,10 @@ class ZarrArrayLoader(ArrayLoader):
                 output_path = output_path.get('component')
             kwds.update(component=output_path)
             kwds.update(storage_options=self.storage_options)
-            zarr_array = from_zarr(source, **kwds)
-            if not self.flat:
-                shp = zarr_array.shape
-                new_shp = (shp[0]*shp[1], )+shp[2:]
-                log.info(f"Reshaping {output_name} from {shp} to {new_shp}")
-                zarr_array = zarr_array.reshape(new_shp)
+            zarr_array = self.source[output_path].view(fill_value=0)
             self.outputs[output_name] = zarr_array
             if shape is not None:
+                1/0
                 outer_dimension = self.outputs[output_name].shape[0]
                 self.outputs[output_name] = self.outputs[output_name].reshape((outer_dimension,) + tuple(shape))
 
@@ -287,19 +304,19 @@ class ZarrArrayLoader(ArrayLoader):
         """
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_train_index_array,
                              randomise=self.randomise, maximum_samples=self.maximum_training_samples,
-                             standardisers=self.input_standardizers, sample_weights=self.sample_weights, slice_timestamps=self.slice_timestamps)
+                             standardisers=self.input_standardizers, sample_weights=self.sample_weights, slice_timestamps=self.slice_timestamps, flat=self.flat)
 
     def get_validation(self, batch_size: int) -> ArraySequence:
         if self.split_test_index_array is None:
             return None
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array,
                              randomise=self.randomise, maximum_samples=self.maximum_validation_samples,
-                             standardisers=self.input_standardizers, slice_timestamps=self.slice_timestamps)
+                             standardisers=self.input_standardizers, slice_timestamps=self.slice_timestamps, flat=self.flat)
 
     def get_test(self, batch_size: int) -> ArraySequence:
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array,
                              randomise=self.randomise, maximum_samples=self.maximum_validation_samples,
-                             standardisers=self.input_standardizers, slice_timestamps=self.slice_timestamps)
+                             standardisers=self.input_standardizers, slice_timestamps=self.slice_timestamps, flat=self.flat)
 
     def get_mask(self):
         raise NotImplementedError()
