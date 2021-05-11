@@ -331,13 +331,15 @@ class ZarrArrayLoader(ArrayLoader):
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array,
                              randomise=self.randomise, maximum_samples=self.maximum_validation_samples,
                              standardisers=self.input_standardizers, slice_timestamps=self.slice_timestamps,
-                             flat=self.flat)
+                             flat=self.flat,
+                             input_transformers=self.input_transformers, output_transformers=self.output_transformers)
 
     def get_test(self, batch_size: int) -> ArraySequence:
         return ArraySequence(self.inputs, self.outputs, batch_size, selected_indices=self.split_test_index_array,
                              randomise=self.randomise, maximum_samples=self.maximum_validation_samples,
                              standardisers=self.input_standardizers, slice_timestamps=self.slice_timestamps,
-                             flat=self.flat)
+                             flat=self.flat,
+                             input_transformers=self.input_transformers, output_transformers=self.output_transformers)
 
     def get_mask(self):
         raise NotImplementedError()
