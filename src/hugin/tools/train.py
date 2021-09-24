@@ -54,6 +54,7 @@ def train_handler(args):
     log.info(f"workspace directory: {workspace_directory}")
     if workspace_directory and trainer.base_directory is None:
         trainer.base_directory = workspace_directory
+        trainer.destination = workspace_directory
 
     if isinstance(trainer, RasterSceneTrainer):
         if input_dir is not None:

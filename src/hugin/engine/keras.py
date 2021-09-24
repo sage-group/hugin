@@ -379,5 +379,5 @@ class KerasModel(RasterModel):
         log.info("Saving Keras model to %s", destination)
         if not os.path.exists(destination):
             os.makedirs(destination)
-        destination = os.path.join(destination, "model.hdf5")
+        destination = os.path.join(destination, f"{self.model_name}.hdf5")
         self.model.save(destination)
