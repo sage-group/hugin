@@ -126,7 +126,7 @@ class KerasModel(RasterModel):
         if self.base_directory is None:
             raise ValueError("Workspace/destination directory not specified")
         if not os.path.exists(self.base_directory):
-            log.debug("Based directory does not exist: %s", self.base_directory)
+            log.debug("Base directory does not exist: %s", self.base_directory)
             return None
         final_model_path = os.path.join(self.base_directory, "model.hdf5")
 
@@ -278,9 +278,9 @@ class KerasModel(RasterModel):
         else:
             fit_options.update(steps_per_epoch=self.validation_steps_per_epoch)
 
-        model_path = None
+        model_path = self.model_path
 
-        if self.model_path is None:
+        if model_path is None:
             model_info = self.find_model(self.resume_checkpoint)
             if model_info is None:
                 model_path = None

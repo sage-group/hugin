@@ -605,7 +605,9 @@ class DataGenerator(object):
                     for k,v in output_data.items():
                         out_arrays[k] = v if not self._copy else v.copy()
 
-                    yield (self._flaten_simple_input(in_arrays), self._flaten_simple_input(out_arrays))
+                    result = (self._flaten_simple_input(in_arrays), self._flaten_simple_input(out_arrays))
+                    #print (result[0].shape)
+                    yield result
                     count = 0
 
         if count > 0:
@@ -617,8 +619,8 @@ class DataGenerator(object):
             for k, v in output_data.items():
                 subset = v[:count, :, :]
                 out_arrays[k] = subset if not self._copy else subset.copy()
-
-            yield (self._flaten_simple_input(in_arrays), self._flaten_simple_input(out_arrays))
+            result = (self._flaten_simple_input(in_arrays), self._flaten_simple_input(out_arrays))
+            yield result
 
 class ThreadedDataGenerator(threading.Thread):
     def __init__(self, data_generator, queue_size=None):

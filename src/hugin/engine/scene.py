@@ -167,7 +167,7 @@ class ArrayModelTrainer(ArrayModel):
     # ToDo: the next method and the one from RasterSceneTrainer should go to a parent class
     #
     def save(self, destination : str = None):
-        destination = destination if destination is not None else self.destination
+        destination = destination if destination is not None else self.model.base_directory
         if not os.path.exists(destination):
             os.makedirs(destination)
         final_destination = os.path.join(destination, self.model.model_name)

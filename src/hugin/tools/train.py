@@ -1,6 +1,7 @@
 import logging
 from urllib.parse import urlparse, parse_qs
 
+import os
 import yaml
 import fsspec
 from hugin.engine.scene import RasterSceneTrainer, ArrayModel
@@ -9,6 +10,11 @@ try:
     from yaml import CLoader as Loader
 except ImportError:
     from yaml import Loader as Loader
+
+try:
+    from setproctitle import setproctitle
+except ImportError:
+    def setproctitle(*args, **kwargs): pass
 
 log = logging.getLogger(__name__)
 
@@ -35,9 +41,17 @@ def train_handler(args):
     trainer = config["trainer"]
 
     workspace_directory = experiment_configuration.get('workspace', None)
+    experiment_name = experiment_configuration.get('name', None)
+
     if workspace_directory is not None:
         workspace_directory = workspace_directory.format(**experiment_configuration)
 
+    if not os.path.exists(workspace_directory):
+        os.makedirs(workspace_directory)
+
+    title = f"hugin train (name: {experiment_name})"
+    setproctitle(title)
+    log.info(f"workspace directory: {workspace_directory}")
     if workspace_directory and trainer.base_directory is None:
         trainer.base_directory = workspace_directory
 
@@ -65,5 +79,5 @@ def train_handler(args):
         raise NotImplementedError("Specified trainer type is not supported")
 
     log.info("Training completed")
-    log.info("Saving configuration to: %s", destination)
+    log.info("Saving configuration model")
     trainer.save()

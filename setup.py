@@ -16,6 +16,11 @@ REQUIRED_PACKAGES = [
     'matplotlib',
     'scikit-learn',
     'tqdm',
+    'numpy',
+    'fsspec',
+    'traitlets',
+    'zarr',
+    'dask'
 ]
 
 
