@@ -1,7 +1,6 @@
 docker-build:
   image: gcr.io/kaniko-project/executor:debug
   stage: build
-  needs: ["build"]
   script:
     - |
       if [[ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]]; then
