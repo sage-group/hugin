@@ -23,7 +23,7 @@ docker-build-ppc64le:
   tags:
   - ppc64le
 
-  image: gcr.io/kaniko-project/executor:debug
+  image: gcr.io/kaniko-project/executor:debug-v1.5.0
   stage: build
   script:
     - |
