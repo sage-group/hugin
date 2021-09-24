@@ -9,10 +9,18 @@ log = getLogger(__name__)
 
 
 class SkLearnModel(RasterModel):
-    def __init__(self, model=None, model_path=None, **kwargs):
+    def __init__(self, model=None, model_path: str = None, loop: bool = False, **kwargs):
+        """Trains or predictis using an SciKit-Model
+
+        :param model: reference to an object compatible to the SciKit-Learn API
+        :param model_path: path to an pickled version of a model
+        :param loop: specifies if the model should loop forever
+        :param kwargs: passed to RasterModel
+        """
         RasterModel.__init__(self, **kwargs)
         self.model_path = model_path
         self.model = model
+        self.loop = loop
         if self.model_path is not None and os.path.exists(self.model_path):
             log.info(f"Loading model from {self.model_path}")
             with open(self.model_path, "rb") as model_pickle:
@@ -27,8 +35,20 @@ class SkLearnModel(RasterModel):
         log.info(f"Using {self.model}")
 
     def fit_generator(self, train_data, validation_data=None, *_):
+        """Incremental fitting for compliant models
+
+        :param train_data: X values
+        :param validation_data: y values
+        :param _: Other arguments ignored
+        :return:
+        """
         log.info("Starting fitting")
+        count = 0
         for batch in tqdm.tqdm(train_data):
+            if not self.loop:
+                if count == len(train_data):
+                    break
+            count += 1
             X, y = batch
             self.model.partial_fit(X, y)
         log.info("Finished fitting")
