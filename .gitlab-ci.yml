@@ -38,11 +38,11 @@ docker-build-ppc64le:
         tag=":$CI_COMMIT_REF_SLUG"
         echo "Running on branch '$CI_COMMIT_BRANCH': tag = $tag"
       fi
-    - docker build --pull -t "$CI_REGISTRY_IMAGE${tag}" .
+    - docker build --pull -t "$CI_REGISTRY_IMAGE${tag}" -f Dockerfile.ppc64le . 
     - docker push "$CI_REGISTRY_IMAGE${tag}"
-  # Run this job in a branch where a Dockerfile 
+  # Run this job in a branch where a Dockerfile.ppc64le 
 
   rules:
     - if: $CI_COMMIT_BRANCH
       exists:
-        - Dockerfile
+        - Dockerfile.ppc64le
