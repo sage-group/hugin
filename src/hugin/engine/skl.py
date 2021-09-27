@@ -62,3 +62,4 @@ class SkLearnModel(RasterModel):
         with open(destination_file, "wb") as model_pickle:
             pickle.dump(self.model, model_pickle)
             log.info(f"Pickled model to {destination_file}")
+
