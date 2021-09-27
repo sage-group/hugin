@@ -42,13 +42,13 @@ def main():
     subparsers = parser.add_subparsers(help='Available commands')
 
     train_parser = subparsers.add_parser('train', help="Train a model")
-    train_parser.add_argument('--config', type=str, required=False, default=os.environ.get("HUGIN_CONFIG_URL", None),
+    train_parser.add_argument('--config', type=str, required=True, default=os.environ.get("HUGIN_CONFIG_URL", None),
                               help='Path to config file')
     train_parser.add_argument('--input-dir', required=False, default=None, help=argparse.SUPPRESS)
     train_parser.set_defaults(func=train_handler)
 
     predict_parser = subparsers.add_parser('predict', help='Run prediction')
-    predict_parser.add_argument('--config', type=argparse.FileType('r'), required=False, default=None,
+    predict_parser.add_argument('--config', type=argparse.FileType('r'), required=True, default=None,
                                 help='Path to config file')
     predict_parser.add_argument('--input-dir', required=False, help=argparse.SUPPRESS)
     predict_parser.add_argument('--output-dir', required=False, default=None)
