@@ -272,11 +272,11 @@ class KerasModel(RasterModel):
                     pass
                 else:
                     validation_steps_per_epoch = math.ceil(len(validation_data) / self.batch_size)
-                    fit_options.update(steps_per_epoch=validation_steps_per_epoch)
+                    fit_options.update(validation_steps=validation_steps_per_epoch)
             else:
                 validation_steps_per_epoch = None
         else:
-            fit_options.update(steps_per_epoch=self.validation_steps_per_epoch)
+            fit_options.update(validation_steps=self.validation_steps_per_epoch)
 
         model_path = self.model_path
 
