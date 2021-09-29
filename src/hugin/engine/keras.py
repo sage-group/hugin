@@ -112,7 +112,7 @@ class KerasModel(RasterModel):
 
     def predict(self, batch, batch_size=None):
         if self.model is None:
-            self.__load_model()
+            self.__load_model(self.model_path)
         batch_size = batch_size if batch_size else self.batch_size
         prediction = self.model.predict(batch, batch_size=batch_size)
         return prediction
