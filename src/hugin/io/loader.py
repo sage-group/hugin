@@ -624,7 +624,10 @@ class ThreadedDataGenerator(threading.Thread):
             queue_size = int(os.environ.get('HUGIN_DATA_GENERATOR_QUEUE_SIZE', 4))
         self._queue_size = queue_size
         self._q = Queue(maxsize=self._queue_size)
-        self._len = len(self._data_generator)
+        if self._data_generator is None:
+            self._len = 0
+        else:
+            self._len = len(self._data_generator)
         self._data_generator_flow = self._flow_data()
         threading.Thread.__init__(self)
         self.setName("ThreadedDataGenerator")
@@ -632,9 +635,12 @@ class ThreadedDataGenerator(threading.Thread):
         self.start()
 
     def run(self):
-        for d in self._data_generator:
-            self._q.put(d)
-        self._q.put(None)
+        try:
+            if self._data_generator is not None:
+                for d in self._data_generator:
+                    self._q.put(d)
+        finally:
+            self._q.put(None)
 
     def __len__(self):
         return self._len
