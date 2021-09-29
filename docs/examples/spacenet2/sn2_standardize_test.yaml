@@ -5,12 +5,10 @@ configuration:
 
 data_source: !!python/object/apply:hugin.io.FileSystemLoader
   kwds:
-    input_source: "/data/bid/storage0/sage-storage/experiments/buildings/data/train/AOI_5_Khartoum/PS-MS/"
+    input_source: "/data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unet/vasile/"
     data_pattern: '(?P<COMPETITION_ID>[a-zA-Z0-9]+)_(?P<COMPETITION_NAME>[a-zA-Z0-9]+)_(?P<COMPETITION_STAGE>[a-zA-Z0-9]+)_AOI_(?P<AOI_ID>\d+)_(?P<AOI_NAME>[a-zA-Z0-9]+)_(?P<TYPE>[a-zA-Z0-9-]+)_(?P<IMAGE_ID>[a-zA-Z0-9]+).*\.tif$'
     type_format: '{TYPE}'
     id_format: '{IMAGE_ID}'
-    persist_file: "/tmp/cache_sn2.yaml"
-    validation_percent: 0.01
 
 
 trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
@@ -18,31 +16,27 @@ trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
     name: model1_lunetv2_full_seed1993_class3
     window_size: [ 256, 256 ]
     stride_size: 256
-    format_converter: !!python/object/apply:hugin.io.CategoricalConverter
-      kwds:
-        num_classes: 2
-        channel_last: True
     mapping:
       inputs:
         'input_1':
           primary: True
           channels:
-            - type: "PS-MS"
+            - type: "RGBNIR"
               channel: 1 # 5
               preprocessing: [ ]
-            - type: "PS-MS"
+            - type: "RGBNIR"
               channel: 2 # 3
               preprocessing: [ ]
-            - type: "PS-MS"
+            - type: "RGBNIR"
               channel: 3 # 2
               preprocessing: [ ]
-            - type: "PS-MS"
+            - type: "RGBNIR"
               channel: 4 # 7
               preprocessing: [ ]
       target:
         output_1:
           channels:
-            - [ "PS-MS-GTI", 1 ]
+            - [ "RGBNIR", 1 ]
     model: !!python/object/apply:hugin.engine.skl.SkLearnModel
       kwds:
         name: standard_scaler_terrasigna

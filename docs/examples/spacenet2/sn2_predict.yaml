@@ -1,0 +1,75 @@
+data_source: !!python/object/apply:hugin.io.FileSystemLoader
+  kwds:
+    input_source: "/data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unet/vasile"
+    data_pattern: '(?P<COMPETITION_ID>[a-zA-Z0-9]+)_(?P<COMPETITION_NAME>[a-zA-Z0-9]+)_(?P<COMPETITION_STAGE>[a-zA-Z0-9]+)_AOI_(?P<AOI_ID>\d+)_(?P<AOI_NAME>[a-zA-Z0-9]+)_(?P<TYPE>[a-zA-Z0-9-]+)_(?P<IMAGE_ID>[a-zA-Z0-9]+).*\.tif$'
+    type_format: '{TYPE}'
+    id_format: '{IMAGE_ID}'
+
+
+
+predictor: !!python/object/apply:hugin.engine.scene.RasterScenePredictorMaxClass
+  kwds:
+    name: predictor
+    window_size: [ 256, 256 ]
+    stride_size: 128
+    format_converter: !!python/object/apply:hugin.io.CategoricalConverter
+      kwds:
+        num_classes: 2
+        channel_last: True
+    mapping:
+      inputs:
+        'input_1':
+          primary: True
+          preprocessing: [ ]
+          channels:
+            - type: "RGBNIR"
+              channel: 1
+              preprocessing:
+                - !!python/object/apply:hugin.models.skl.StandardScaler.StandardScalerTransformer
+                  kwds:
+                    model_path: /data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unet/standard_scaler_terrasigna/standard_scaler_terrasigna.pickle
+                    channel: 0
+            - type: "RGBNIR"
+              channel: 2
+              preprocessing:
+                - !!python/object/apply:hugin.models.skl.StandardScaler.StandardScalerTransformer
+                  kwds:
+                    model_path: /data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unet/standard_scaler_terrasigna/standard_scaler_terrasigna.pickle
+                    channel: 1
+            - type: "RGBNIR"
+              channel: 3
+              preprocessing:
+                - !!python/object/apply:hugin.models.skl.StandardScaler.StandardScalerTransformer
+                  kwds:
+                    model_path: /data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unet/standard_scaler_terrasigna/standard_scaler_terrasigna.pickle
+                    channel: 2
+            - type: "RGBNIR"
+              channel: 4
+              preprocessing:
+                - !!python/object/apply:hugin.models.skl.StandardScaler.StandardScalerTransformer
+                  kwds:
+                    model_path: /data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unet/standard_scaler_terrasigna/standard_scaler_terrasigna.pickle
+                    channel: 3
+    model: !!python/object/apply:hugin.engine.keras.KerasModel
+      kwds:
+        name: keras_predictor
+        batch_size: 16
+        model_path: /data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unet-right_mapping/checkpoints/checkpoint-034-0.1591.hdf5
+        model_builder: hugin.models.unet.unetv14:unet_v14
+        model_builder_options:
+          output_channels: 2
+        swap_axes: True
+        enable_multi_gpu: False
+        num_gpus: 2
+        use_multiprocessing: False
+        workers: 8
+        max_queue_size: 4
+
+    #prediction_merger: !!python/name:hugin.engine.core.NullMerger
+
+output: !!python/object/apply:hugin.engine.scene.RasterIOSceneExporter
+  kwds:
+    srs_source_component: "RGBNIR"
+    destination: /data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unet/predictions/
+    filename_pattern: '{scene_id}.tif'
+
