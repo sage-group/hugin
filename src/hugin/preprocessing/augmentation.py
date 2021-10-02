@@ -35,10 +35,11 @@ except ImportError:
 
 
 class Augmentation(object):
-    def __init__(self, operators=None, random_order=False):
+    def __init__(self, operators: bool = None, random_order: bool = False, augment_outputs: bool = True):
         self.operators = operators
         self.random_order = random_order
         self.mod_name = 'imgaug.augmenters'
+        self.augment_outputs = augment_outputs
 
     def __call__(self, input, gti=None):
         return self.augment(input=input, gti=gti)
@@ -55,7 +56,7 @@ class Augmentation(object):
                     input_aug = seq_det.augment_image(v)
                     in_aug[k] = input_aug
                 for k, v in gti.items():
-                    gti_aug = seq_det.augment_image(v)
+                    gti_aug = seq_det.augment_image(v) if self.augment_outputs else v
                     if np.amax(gti_aug) > 1:
                         gti_aug[gti_aug > 1] = 1
                     out_aug[k] = gti_aug
