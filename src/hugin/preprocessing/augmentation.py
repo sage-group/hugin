@@ -150,7 +150,7 @@ class Augmentation(object):
         return seq
 
     def _sequencerv2(self):
-        op = self.operators
+        op = self.operators['augment']['operators']
         mod = importlib.import_module(self.mod_name)
         operators = []
         for k, v in op.items():
