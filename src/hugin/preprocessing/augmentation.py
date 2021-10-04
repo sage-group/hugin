@@ -44,7 +44,7 @@ class Augmentation(object):
     def __call__(self, input, gti=None):
         return self.augment(input=input, gti=gti)
 
-    def augment(self, input, gti=None):
+    def augment(self, input, gti=None, aug_gti=False):
         seq = self._sequencerv2()
         if isinstance(input, dict):
             seq_det = seq.to_deterministic()
@@ -55,11 +55,14 @@ class Augmentation(object):
                 for k, v in input.items():
                     input_aug = seq_det.augment_image(v)
                     in_aug[k] = input_aug
-                for k, v in gti.items():
-                    gti_aug = seq_det.augment_image(v) if self.augment_outputs else v
-                    if np.amax(gti_aug) > 1:
-                        gti_aug[gti_aug > 1] = 1
-                    out_aug[k] = gti_aug
+                if aug_gti:
+                    for k, v in gti.items():
+                        gti_aug = seq_det.augment_image(v) if self.augment_outputs else v
+                        if np.amax(gti_aug) > 1:
+                            gti_aug[gti_aug > 1] = 1
+                        out_aug[k] = gti_aug
+                else:
+                    out_aug = gti
                 return in_aug, out_aug
             else:
                 for k, v in input.items():
@@ -85,8 +88,11 @@ class Augmentation(object):
         else:
             seq_det = seq.to_deterministic()
             aug_img = seq_det.augment_image(input)
-            aug_gti = seq_det.augment_image(gti)
-            aug_gti[aug_gti > 1] = 1
+            if aug_gti:
+                aug_gti = seq_det.augment_image(gti)
+                aug_gti[aug_gti > 1] = 1
+            else:
+                aug_gti = gti
             aug = (aug_img, aug_gti)
         return aug
 

@@ -47,7 +47,11 @@
 
 augment:
   operators:
-    Dropout:
+    CoarseDropout:
       p: !!python/list [0.05, 0.2]
-      prop: !!float 0.0
+      size_percent: 0.1
+#      prop: !!float 0.9
+#    CoarseSaltAndPepper:
+#      p: !!python/list [0.05, 0.2]
+#      size_percent: 0.1
   random_order: True
