@@ -1,6 +1,6 @@
 configuration:
   model_path: "/data/bid/storage0/sage-storage/homes/eosmith/hugin/models/{name}"
-  name: "spacenet2-unet-right_mapping"
+  name: "spacenet2-unetv15-right_mapping-stride128"
   workspace: "/data/bid/storage0/sage-storage/homes/eosmith/hugin/models/{name}"
 
 data_source: !!python/object/apply:hugin.io.FileSystemLoader
@@ -9,15 +9,16 @@ data_source: !!python/object/apply:hugin.io.FileSystemLoader
     data_pattern: '(?P<COMPETITION_ID>[a-zA-Z0-9]+)_(?P<COMPETITION_NAME>[a-zA-Z0-9]+)_(?P<COMPETITION_STAGE>[a-zA-Z0-9]+)_AOI_(?P<AOI_ID>\d+)_(?P<AOI_NAME>[a-zA-Z0-9]+)_(?P<TYPE>[a-zA-Z0-9-]+)_(?P<IMAGE_ID>[a-zA-Z0-9]+).*\.tif$'
     type_format: '{TYPE}'
     id_format: '{IMAGE_ID}'
-    persist_file: "/tmp/cache_sn2.yaml"
+    persist_file: "/tmp/cache_sn2_2.yaml"
     validation_percent: 0.25
+    randomise: True
 
 
 trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
   kwds:
     name: model1_lunetv2_full_seed1993_class3
     window_size: [ 256, 256 ]
-    stride_size: 140
+    stride_size: 128
     format_converter: !!python/object/apply:hugin.io.CategoricalConverter
       kwds:
         num_classes: 2
@@ -63,16 +64,26 @@ trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
     model: !!python/object/apply:hugin.engine.keras.KerasModel
       kwds:
         name: keras_model
-        model_builder: hugin.models.unet.unetv14:unet_v14
+        model_builder: hugin.models.unet.unetv15:unet_v15
         swap_axes: True
         random_seed: 1993
         model_builder_options:
           output_channels: 2
+          dropout: True
+          dropout_rate: 0.25
+          activation: 'elu'
         model_path: "/data/bid/storage0/sage-storage/homes/eosmith/hugin/models/{name}"
-        batch_size: 10
+        batch_size: 9
         epochs: 100
         metrics:
           - categorical_accuracy
+          - !!python/object/apply:tensorflow.keras.metrics.Precision
+            kwds: {}
+          - !!python/object/apply:tensorflow.keras.metrics.Recall
+            kwds: {}
+          - !!python/object/apply:tensorflow.keras.metrics.AUC
+            kwds:
+              num_thresholds: 200
           - !!python/name:hugin.tools.utils.dice_coef
         loss: categorical_crossentropy #binary_crossentropy
         checkpoint:

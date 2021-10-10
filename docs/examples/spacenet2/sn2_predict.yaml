@@ -11,11 +11,12 @@ predictor: !!python/object/apply:hugin.engine.scene.RasterScenePredictorMaxClass
   kwds:
     name: predictor
     window_size: [ 256, 256 ]
-    stride_size: 128
+    stride_size: 256
     format_converter: !!python/object/apply:hugin.io.CategoricalConverter
       kwds:
         num_classes: 2
         channel_last: True
+    pre_processors: []
     mapping:
       inputs:
         'input_1':
@@ -54,8 +55,8 @@ predictor: !!python/object/apply:hugin.engine.scene.RasterScenePredictorMaxClass
       kwds:
         name: keras_predictor
         batch_size: 16
-        model_path: /data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unet-right_mapping/checkpoints/checkpoint-034-0.1591.hdf5
-        model_builder: hugin.models.unet.unetv14:unet_v14
+        model_path: /data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unetv15-right_mapping-stride128/checkpoints/checkpoint-067-0.1440.hdf5
+        model_builder: hugin.models.unet.unetv15:unet_v15
         model_builder_options:
           output_channels: 2
         swap_axes: True
