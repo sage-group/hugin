@@ -225,8 +225,8 @@ class CoreScenePredictor(BaseSceneModel):
                  window_size=None,
                  output_shape=None,
                  prediction_merger=NullMerger,
-                 post_processors=None, # Run after we get the data form predictors
-                 pre_processors=None, # Run before sending the data to predictors
+                 post_processors=None, # Run after we get the data from models
+                 pre_processors=None, # Run before sending the data to models
                  format_converter=NullFormatConverter(),
                  metrics=None):
         """
@@ -623,9 +623,12 @@ class RasterIOSceneExporter(SceneExporter):
             if self.srs_source_component is not None:
                 src = scene_data[self.srs_source_component]
                 profile.update (src.profile)
-            num_out_channels = prediction.shape[-1]
+            if len(prediction.shape) == 3:
+                num_out_channels = prediction.shape[-1]
+            else: # Just a simple raster
+                num_out_channels = 1
             profile.update(self.rasterio_creation_options)
-            profile.update(dtype=prediction.dtype, count=num_out_channels)
+            profile.update(dtype=rasterio.dtypes.get_minimum_dtype(prediction), count=num_out_channels)
             if 'driver' not in profile:
                 profile['driver'] = 'GTiff'
             if profile['driver'] == 'GTiff':
@@ -636,6 +639,19 @@ class RasterIOSceneExporter(SceneExporter):
                 profile['height'] = prediction_height
             if 'width' not in profile:
                 profile['width'] = prediction_width
+
             with rasterio.open(destination_file, "w", **profile) as dst:
-                for idx in range(0, num_out_channels):
-                    dst.write(prediction[:, :, idx], idx + 1)
+                if num_out_channels == 1:
+                    dst.write(prediction, 1)
+                else:
+                    for idx in range(0, num_out_channels):
+                        dst.write(prediction[:, :, idx], idx + 1)
+
+class RasterScenePredictorMaxClass(RasterScenePredictor):
+    def __init__(self, *args, **kwargs):
+        RasterScenePredictor.__init__(self, *args, **kwargs)
+
+    def predict_scene_proba(self, *args, **kwargs):
+        prediction, info = RasterScenePredictor.predict_scene_proba(self, *args, **kwargs)
+        prediction = np.argmax(prediction, axis=-1)
+        return prediction, info
