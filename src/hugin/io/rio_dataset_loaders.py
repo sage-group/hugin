@@ -144,13 +144,4 @@ class DatasetGenerator(object):
         return entry_name, new_components
 
     def get_component_file_descriptor(self, file_path):
-        from fiona.errors import DriverError
-        try:
-            return rasterio.open(file_path)
-        except RasterioIOError:
-            try:
-                return gp.read_file(file_path)
-            except DriverError as e:
-                df = gp.GeoDataFrame()
-                df['geometry'] = ''
-                return df
+        return rasterio.open(file_path)
