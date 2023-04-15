@@ -161,6 +161,15 @@ class BaseLoader(object):
         else:
             self.scan_datasets()
 
+    @property
+    def persist_file(self):
+        if not hasattr(self, "_persist_file"):
+            return None
+        else:
+            return self._persist_file
+    @persist_file.setter
+    def persist_file(self, value):
+        self._persist_file = value
 
     def scan_datasets(self):
         self._datasets.clear()

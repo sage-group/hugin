@@ -1,5 +1,5 @@
 configuration:
-  model_path: "s3://sagegroup-data/sage/models/{name}"
+#  model_path: "s3://sagegroup-data/sage/models/{name}"
   name: "unet-forestry-dev"
   workspace: "/home/marian/models/{name}"
 
@@ -15,6 +15,7 @@ data_source: !!python/object/apply:hugin.io.FSSpecFilesystemLoader
     type_format: '{type}'
     validation_percent: 0.25
     randomise: True
+    persist_file: ""
 
 trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
          kwds:
@@ -54,18 +55,11 @@ trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
              model_builder_options:
                output_channels: 2
              model_path: "/data/bid/storage0/sage-storage/homes/eosmith/marian/models/{name}"
-             batch_size: 16
+             batch_size: 14
              epochs: 100
              metrics:
                - categorical_accuracy
                - !!python/name:hugin.tools.utils.dice_coef
-               - !!python/object/apply:tensorflow.keras.metrics.MeanIoU
-                 kwds:
-                   num_classes: 2
-               - !!python/object/apply:tensorflow.keras.metrics.IoU
-                 kwds:
-                   target_class_ids: [0, 1]
-                   num_classes: 2
                - !!python/object/apply:tensorflow.keras.metrics.BinaryIoU
                  kwds:
                    target_class_ids: [1]
