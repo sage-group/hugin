@@ -1,6 +1,6 @@
 configuration:
   model_path: "s3://sagegroup-data/sage/models/{name}"
-  name: "lunet5-clasa6-rapita-fold-1"
+  name: "unet-forestry-dev"
   workspace: "/home/marian/models/{name}"
 
 
@@ -46,7 +46,9 @@ trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
           model: !!python/object/apply:hugin.engine.keras.KerasModel
            kwds:
              name: keras_model
-             model_builder: hugin.models.unet.unetv14:unet_v14
+             model_builder: !!python/object/apply:hugin.models.unet.UNet
+               kwds:
+                 name: "replace-me"
              swap_axes: True
              random_seed: 1993
              model_builder_options:
