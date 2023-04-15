@@ -52,8 +52,7 @@ class CategoricalConverter(object):
         cat = to_categorical(entry, self._num_classes)
         old_cat = cat
         if not self._channel_last:
-            #cat = np.swapaxes(np.swapaxes(cat, 0, 1), 1, 2)
-            cat = np.swapaxes(np.swapaxes(cat, 2, 1), 1, 0) # how an I save?
+            cat = np.swapaxes(np.swapaxes(cat, 2, 1), 1, 0)
         return cat
 
    
