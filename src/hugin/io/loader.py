@@ -24,10 +24,8 @@ from queue import Queue
 import backoff
 import math
 import numpy as np
-try:
-    from tensorflow.keras.utils import to_categorical
-except ImportError:
-    from keras.utils import to_categorical
+
+from tensorflow.keras.utils import to_categorical
 
 import os
 
@@ -347,7 +345,6 @@ def augment_mapping_with_datasets(dataset, mapping):
 
 
 def make_categorical(y, num_classes=None):
-    from keras.utils import to_categorical
     cat = to_categorical(y, num_classes)
     return cat
 

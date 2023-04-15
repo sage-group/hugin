@@ -16,8 +16,7 @@ __license__ = \
     """
 
 import tensorflow as tf
-from keras import backend as K
-
+from tensorflow.keras import backend as K
 
 def keras_dice_loss(labels, probas, epsilon=1e-6):
     # https://www.jeremyjordan.me/semantic-segmentation/

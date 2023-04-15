@@ -13,7 +13,6 @@ from tensorflow.keras.utils import Sequence
 from hugin.engine.core import RasterModel
 from hugin.tools.callbacks import CSVLogger
 from hugin.tools.utils import import_model_builder
-
 from traitlets import Unicode, Integer, observe
 
 log = getLogger(__name__)

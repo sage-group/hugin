@@ -15,11 +15,12 @@ __license__ = \
        limitations under the License.
     """
 
-from tensorflow.keras.layers import Input, concatenate, MaxPooling2D, ZeroPadding2D, Cropping2D, Convolution2D, Convolution2DTranspose, BatchNormalization, Bidirectional
-from tensorflow.keras.models import Model
+import tensorflow as tf
 
 from hugin.tools.utils import custom_objects, dice_coef, MultilabelMeanIOU
-
+from tensorflow.python.keras.layers import ZeroPadding2D, Convolution2D, Cropping2D, concatenate, MaxPooling2D, Convolution2DTranspose
+from tensorflow.keras.layers import BatchNormalization
+from tensorflow.python.keras.models import Model
 
 @custom_objects({'dice_coef': dice_coef})
 def unet_v14(
@@ -44,7 +45,7 @@ def unet_v14(
         timestamps_1, input_1_height, input_1_width, input_1_channels = input_shapes["input_1"]
 
 
-    inputs = Input((input_1_height, input_1_width, input_1_channels))
+    inputs = tf.keras.Input((input_1_height, input_1_width, input_1_channels))
 
     conv1 = ZeroPadding2D((crop, crop))(inputs)
 

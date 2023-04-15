@@ -6,10 +6,8 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from traitlets import HasTraits, Unicode, observe
 
-try:
-    from tensorflow.keras.utils import to_categorical
-except ImportError:
-    from keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
+
 
 log = getLogger(__name__)
 
