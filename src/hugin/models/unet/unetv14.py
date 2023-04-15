@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 __license__ = \
-    """Copyright 2019 West University of Timisoara
+    """Copyright 2023 West University of Timisoara
     
        Licensed under the Apache License, Version 2.0 (the "License");
        you may not use this file except in compliance with the License.
@@ -15,10 +15,13 @@ __license__ = \
        limitations under the License.
     """
 
-from tensorflow.keras.layers import Input, concatenate, MaxPooling2D, ZeroPadding2D, Cropping2D, Convolution2D, Convolution2DTranspose, BatchNormalization, Bidirectional
-from tensorflow.keras.models import Model
+import tensorflow as tf
 
-from hugin.tools.utils import custom_objects, dice_coef, MultilabelMeanIOU
+from hugin.tools.utils import custom_objects, dice_coef
+from tensorflow.python.keras.layers import ZeroPadding2D, Convolution2D, Cropping2D, concatenate, MaxPooling2D, \
+    Convolution2DTranspose
+from tensorflow.keras.layers import BatchNormalization
+from tensorflow.python.keras.models import Model
 
 
 @custom_objects({'dice_coef': dice_coef})
@@ -36,15 +39,14 @@ def unet_v14(
         axis=3,
         crop=0,
         mpadd=0,
-             ):
+):
     nr_classes = output_channels
     if len(input_shapes["input_1"]) == 3:
         input_1_height, input_1_width, input_1_channels = input_shapes["input_1"]
     else:
         timestamps_1, input_1_height, input_1_width, input_1_channels = input_shapes["input_1"]
 
-
-    inputs = Input((input_1_height, input_1_width, input_1_channels))
+    inputs = tf.keras.Input((input_1_height, input_1_width, input_1_channels))
 
     conv1 = ZeroPadding2D((crop, crop))(inputs)
 

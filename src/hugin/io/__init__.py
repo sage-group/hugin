@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 from .loader import TileGenerator, DataGenerator, ThreadedDataGenerator, CategoricalConverter
 from .dataset_loaders import FileLoader
 from .dataset_loaders import FileSystemLoader
+from .dataset_loaders import FSSpecFilesystemLoader
 try:
     from .rio_dataset_loaders import DatasetGenerator
 except ImportError:

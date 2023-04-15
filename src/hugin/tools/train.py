@@ -1,3 +1,22 @@
+# -*- coding: utf-8 -*-
+
+
+__license__ = \
+    """Copyright 2023 West University of Timisoara
+
+       Licensed under the Apache License, Version 2.0 (the "License");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
+
+           http://www.apache.org/licenses/LICENSE-2.0
+
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+    """
+
 import logging
 from urllib.parse import urlparse, parse_qs
 
@@ -45,11 +64,12 @@ def train_handler(args):
 
     if workspace_directory is not None:
         workspace_directory = workspace_directory.format(**experiment_configuration)
-
+    else:
+        raise ValueError("No workspace directory specified")
     if not os.path.exists(workspace_directory):
         os.makedirs(workspace_directory)
 
-    title = f"hugin train (name: {experiment_name})"
+    title = f"hugin train ({experiment_name})"
     setproctitle(title)
     log.info(f"workspace directory: {workspace_directory}")
     if workspace_directory and trainer.base_directory is None:

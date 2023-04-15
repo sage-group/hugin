@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 __license__ = \
-    """Copyright 2019 West University of Timisoara
+    """Copyright 2023 West University of Timisoara
     
        Licensed under the Apache License, Version 2.0 (the "License");
        you may not use this file except in compliance with the License.
@@ -14,3 +14,5 @@ __license__ = \
        See the License for the specific language governing permissions and
        limitations under the License.
     """
+
+from .unet import UNet as UNet

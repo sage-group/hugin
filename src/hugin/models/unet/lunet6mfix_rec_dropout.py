@@ -11,7 +11,7 @@ def encode_block_lstm(size, inputs, kernel, stride, activation, kinit, padding, 
     x, state_h, state_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride,
                                      kernel_initializer=kinit, use_bias=use_bias, activation='linear',
                                      padding=padding, return_sequences=True, return_state=True, recurrent_dropout=recurrent_dropout)(inputs, mask=mask)
-    zx = BatchNormalization()(x) if batch_normalization else x
+    x = BatchNormalization()(x) if batch_normalization else x
     x = PReLU()(x) # In theory this should avoid the vanishing gradient situation that is, arguably more accute with RNNs
 
     x, state_h, state_c = ConvLSTM2D(size, kernel_size=kernel, strides=stride,

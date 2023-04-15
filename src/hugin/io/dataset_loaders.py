@@ -2,7 +2,7 @@
 
 
 __license__ = \
-    """Copyright 2019 West University of Timisoara
+    """Copyright 2023 West University of Timisoara
     
        Licensed under the Apache License, Version 2.0 (the "License");
        you may not use this file except in compliance with the License.
@@ -23,7 +23,9 @@ import os
 import random
 import re
 from collections import OrderedDict
+from urllib.parse import urlparse
 
+import fsspec
 import yaml
 import json
 import pickle
@@ -159,6 +161,15 @@ class BaseLoader(object):
         else:
             self.scan_datasets()
 
+    @property
+    def persist_file(self):
+        if not hasattr(self, "_persist_file"):
+            return None
+        else:
+            return self._persist_file
+    @persist_file.setter
+    def persist_file(self, value):
+        self._persist_file = value
 
     def scan_datasets(self):
         self._datasets.clear()
@@ -351,3 +362,36 @@ class FileSystemLoader(BaseLoader):
                 if not filter(dataset_id, match_components, dataset):
                     self.remove_dataset_by_id(dataset_id)
 
+class FSSpecFilesystemLoader(BaseLoader):
+    def __init__(self, input_source=None, *args, fsspec_storage_options={}, **kw):
+        if input_source is None:
+            raise KeyError(f"Missing input_source")
+        url_spec = urlparse(input_source)
+        self.input_source = input_source
+        self.fs = fsspec.filesystem(url_spec.scheme, **fsspec_storage_options)
+        BaseLoader.__init__(self, *args, prepend_path=f"{url_spec.scheme}://", **kw)
+
+    def update_datasets(self, input_source=None, datasets=None, filter=None):
+        if input_source is None:
+            input_source = self.input_source
+        if datasets is None:
+            datasets = self.get_full_datasets()
+        if filter is None:
+            filter = self._filter
+
+        log.info(f"Searching for all files under {input_source}")
+        all_files = self.fs.glob(input_source + "/**")
+        log.info(f"Finished searching for files")
+        for entry in all_files:
+            fpath = entry
+            parts = fpath.split("/")
+            file_name = parts[-1]
+            match = self._re.match(file_name)
+            if not match:
+                continue
+            match_components = match.groupdict(default='')
+            dataset_path = self._prepend_path + fpath
+            dataset_id = self.update_dataset(match_components=match_components, dataset_path=dataset_path)
+            dataset = self.get_dataset_by_id(dataset_id)
+            if not filter(dataset_id, match_components, dataset):
+                self.remove_dataset_by_id(dataset_id)

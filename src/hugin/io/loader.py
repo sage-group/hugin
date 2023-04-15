@@ -24,10 +24,8 @@ from queue import Queue
 import backoff
 import math
 import numpy as np
-try:
-    from tensorflow.keras.utils import to_categorical
-except ImportError:
-    from keras.utils import to_categorical
+
+from tensorflow.keras.utils import to_categorical
 
 import os
 
@@ -54,8 +52,7 @@ class CategoricalConverter(object):
         cat = to_categorical(entry, self._num_classes)
         old_cat = cat
         if not self._channel_last:
-            #cat = np.swapaxes(np.swapaxes(cat, 0, 1), 1, 2)
-            cat = np.swapaxes(np.swapaxes(cat, 2, 1), 1, 0) # how an I save?
+            cat = np.swapaxes(np.swapaxes(cat, 2, 1), 1, 0)
         return cat
 
    
@@ -347,7 +344,6 @@ def augment_mapping_with_datasets(dataset, mapping):
 
 
 def make_categorical(y, num_classes=None):
-    from keras.utils import to_categorical
     cat = to_categorical(y, num_classes)
     return cat
 
@@ -629,6 +625,7 @@ class ThreadedDataGenerator(threading.Thread):
         else:
             self._len = len(self._data_generator)
         self._data_generator_flow = self._flow_data()
+        self.lock = threading.Lock()
         threading.Thread.__init__(self)
         self.setName("ThreadedDataGenerator")
         self.setDaemon(True)
@@ -649,7 +646,8 @@ class ThreadedDataGenerator(threading.Thread):
         return self
 
     def __next__(self):
-        return next(self._data_generator_flow)
+        with self.lock:
+            return next(self._data_generator_flow)
 
     def _flow_data(self):
         while True:
