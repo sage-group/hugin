@@ -626,6 +626,7 @@ class ThreadedDataGenerator(threading.Thread):
         else:
             self._len = len(self._data_generator)
         self._data_generator_flow = self._flow_data()
+        self.lock = threading.Lock()
         threading.Thread.__init__(self)
         self.setName("ThreadedDataGenerator")
         self.setDaemon(True)
@@ -646,7 +647,8 @@ class ThreadedDataGenerator(threading.Thread):
         return self
 
     def __next__(self):
-        return next(self._data_generator_flow)
+        with self.lock:
+            return next(self._data_generator_flow)
 
     def _flow_data(self):
         while True:
