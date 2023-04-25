@@ -1,0 +1,116 @@
+configuration:
+  model_path: "/data/bid/storage0/sage-storage/homes/eosmith/hugin/models/{name}"
+  name: "spacenet2-unetv15-right_mapping-stride128"
+  workspace: "/data/bid/storage0/sage-storage/homes/eosmith/hugin/models/{name}"
+
+data_source: !!python/object/apply:hugin.io.FileSystemLoader
+  kwds:
+    input_source: "/data/bid/storage0/sage-storage/experiments/buildings/data/train/AOI_5_Khartoum/PS-MS/"
+    data_pattern: '(?P<COMPETITION_ID>[a-zA-Z0-9]+)_(?P<COMPETITION_NAME>[a-zA-Z0-9]+)_(?P<COMPETITION_STAGE>[a-zA-Z0-9]+)_AOI_(?P<AOI_ID>\d+)_(?P<AOI_NAME>[a-zA-Z0-9]+)_(?P<TYPE>[a-zA-Z0-9-]+)_(?P<IMAGE_ID>[a-zA-Z0-9]+).*\.tif$'
+    type_format: '{TYPE}'
+    id_format: '{IMAGE_ID}'
+    persist_file: "/tmp/cache_sn2_2.yaml"
+    validation_percent: 0.25
+    randomise: True
+
+
+trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
+  kwds:
+    name: model1_lunetv2_full_seed1993_class3
+    window_size: [ 256, 256 ]
+    stride_size: 128
+    format_converter: !!python/object/apply:hugin.io.CategoricalConverter
+      kwds:
+        num_classes: 2
+        channel_last: True
+    mapping:
+      inputs:
+        'input_1':
+          primary: True
+          preprocessing: [ ]
+          channels:
+            - type: "PS-MS"
+              channel: 5
+              preprocessing:
+                - !!python/object/apply:hugin.models.skl.StandardScaler.StandardScalerTransformer
+                  kwds:
+                    model_path: /data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unet/standard_scaler/standard_scaler.pickle
+                    channel: 0
+            - type: "PS-MS"
+              channel: 3
+              preprocessing:
+                - !!python/object/apply:hugin.models.skl.StandardScaler.StandardScalerTransformer
+                  kwds:
+                    model_path: /data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unet/standard_scaler/standard_scaler.pickle
+                    channel: 1
+            - type: "PS-MS"
+              channel: 2
+              preprocessing:
+                - !!python/object/apply:hugin.models.skl.StandardScaler.StandardScalerTransformer
+                  kwds:
+                    model_path: /data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unet/standard_scaler/standard_scaler.pickle
+                    channel: 2
+            - type: "PS-MS"
+              channel: 7
+              preprocessing:
+                - !!python/object/apply:hugin.models.skl.StandardScaler.StandardScalerTransformer
+                  kwds:
+                    model_path: /data/bid/storage0/sage-storage/homes/eosmith/hugin/models/spacenet2-unet/standard_scaler/standard_scaler.pickle
+                    channel: 3
+      target:
+        output_1:
+          channels:
+            - [ "PS-MS-GTI", 1 ]
+    model: !!python/object/apply:hugin.engine.keras.KerasModel
+      kwds:
+        name: keras_model
+        model_builder: hugin.models.unet.unetv15:unet_v15
+        swap_axes: True
+        random_seed: 1993
+        model_builder_options:
+          output_channels: 2
+          dropout: True
+          dropout_rate: 0.25
+          activation: 'elu'
+        model_path: "/data/bid/storage0/sage-storage/homes/eosmith/hugin/models/{name}"
+        batch_size: 9
+        epochs: 100
+        metrics:
+          - categorical_accuracy
+          - !!python/object/apply:tensorflow.keras.metrics.Precision
+            kwds: {}
+          - !!python/object/apply:tensorflow.keras.metrics.Recall
+            kwds: {}
+          - !!python/object/apply:tensorflow.keras.metrics.AUC
+            kwds:
+              num_thresholds: 200
+          - !!python/name:hugin.tools.utils.dice_coef
+        loss: categorical_crossentropy #binary_crossentropy
+        checkpoint:
+          monitor: val_loss
+        enable_multi_gpu: False
+        num_gpus: 2
+        use_multiprocessing: False
+        workers: 1
+        max_queue_size: 6
+        optimizer: !!python/object/apply:tensorflow.keras.optimizers.Adam
+          kwds:
+            lr: !!float 0.001 # 0.0001
+            beta_1: !!float 0.9
+            beta_2: !!float 0.999
+            epsilon: !!float 1e-7
+        callbacks:
+          - !!python/object/apply:tensorflow.keras.callbacks.EarlyStopping
+            kwds:
+              monitor: 'val_loss'
+              min_delta: 0.001
+              patience: 20
+              verbose: 1
+              mode: 'auto'
+              baseline: null
+              restore_best_weights: False
+          - !!python/object/apply:tensorflow.keras.callbacks.ReduceLROnPlateau
+            kwds:
+              monitor: 'val_loss'
+              patience: 5
+              factor: !!float 0.2

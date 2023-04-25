@@ -1,0 +1,39 @@
+model_name: forestry_training # Name of the model
+data_source: !!python/object/apply:hugin.io.FileSystemLoader
+  kwds:
+    data_pattern: '(?P<name>[0-9A-Za-z_]+)__(?P<idx>[A-Za-z0-9_\.]+)_(?P<type>B.*)\.tif$'
+    id_format: '{name}-{idx}'
+    type_format: '{type}'
+    input_source: /path/to/data/ # Change to the path to the training data
+window_size: [ 256, 256 ]
+stride_size: 100
+random_seed: 42
+model_type: keras
+mapping:
+  inputs:   
+    - [ "B02_10m", 1 ]
+    - [ "B03_10m", 1 ]
+    - [ "B04_10m", 1 ]
+    - [ "B08_10m", 1 ]
+  target:
+    - [ "B01_10m_GTI", 1 ]
+model:
+  model_builder: model:build_model
+  batch_size: 5
+  model_path: "/tmp/{model_name}.hdf5"
+  loss: categorical_crossentropy
+  log: "/tmp/{model_name}.csv"
+  train_epochs: 10
+  swap_axes: True
+  optimiser: !!python/object/apply:keras.optimizers.Adam
+    kwds:
+      lr: !!float 0.0001
+      beta_1: !!float 0.9
+      beta_2: !!float 0.999
+      epsilon: !!float 1e-8
+  metrics:
+    - accuracy
+    - !!python/name:hugin.tools.utils.dice_coef
+  format_converter: !!python/object/apply:hugin.io.CategoricalConverter
+    kwds:
+      num_classes: 2
