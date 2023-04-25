@@ -1,0 +1,6 @@
+include *.yaml
+recursive-include src/hugin **.yaml **.py
+recursive-include etc **.yaml
+recursive-include src **.py
+recursive-include src **.yaml
+prune tests/

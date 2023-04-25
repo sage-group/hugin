@@ -1,0 +1,50 @@
+data_source: !!python/object/apply:hugin.io.FileSystemLoader
+  kwds:
+    data_pattern: '(?P<name>[0-9A-Za-z_]+)__(?P<idx>[A-Za-z0-9_\.]+)_(?P<type>B.*)\.tif$'
+    id_format: '{name}-{idx}'
+    type_format: '{type}'
+    input_source: /Users/mneagul/Downloads/S2A_OPER_MSI_L1C_TL_SGS__20170519T130610_A009957_T34TFQ_N02.05/data/rezolutie_nativa # Change to the path to the prediction data (can be changed at runtime)
+
+
+predictor: !!python/object/apply:hugin.infer.scene.AvgEnsembleScenePredictor
+  kwds:
+    name: interesting-ensemble
+    predictors:
+      - predictor: !!python/object/apply:hugin.infer.scene.RasterScenePredictor
+          kwds:
+            name: raster_predictor1
+            model: !!python/object/apply:hugin.infer.core.KerasPredictor
+              kwds:
+                name: keras_predictor1
+                model_path: /Users/mneagul/Work/Temp/mdl/forestry_training-09.hdf5
+                model_builder: hugin.models.unet.unetv14:unet_v14
+                input_shape: [256, 256]
+            mapping:
+              inputs:
+                - [ "B02_10m", 1 ]
+                - [ "B03_10m", 1 ]
+                - [ "B04_10m", 1 ]
+                - [ "B08_10m", 1 ]
+              target:
+                - [ "B01_10m_GTI", 1]
+            prediction_merger: !!python/name:hugin.infer.core.AverageMerger
+        weight: 1
+    post_processors:
+      #- !!python/name:hugin.engine.core.identity_processor
+      - !!python/object/apply:hugin.infer.core.CategoricalConverter
+          kwds:
+            num_classes: 6
+    metrics:
+      metric_1: !!python/name:hugin.infer.core.identity_metric
+      metric_2: !!python/name:hugin.infer.core.identity_metric
+    gti_component: 'B01_10m_GTI'
+
+output: !!python/object/apply:hugin.infer.scene.RasterIOSceneExporter
+  kwds:
+    destination: "/Users/mneagul/Work/Temp/export/"
+    metric_destination: "/Users/mneagul/Work/Temp/export/metrics.txt"
+    srs_source_component: "B02_10m"
+    rasterio_creation_options:
+      blockxsize: 256
+      blockysize: 256
+
