@@ -46,7 +46,7 @@ data_source: !!python/object/apply:hugin.io.FSSpecFilesystemLoader
 trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
          kwds:
           name: unetv14
-          stride_size: 256
+          stride_size: 190
           window_size: [256, 256]
           format_converter: !!python/object/apply:hugin.io.loader.CategoricalConverter
             kwds:
