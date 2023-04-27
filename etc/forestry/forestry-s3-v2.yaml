@@ -109,7 +109,7 @@ trainer: !!python/object/apply:hugin.engine.scene.RasterSceneTrainer
              use_multiprocessing: False
              workers: 1
              max_queue_size: 40
-             optimizer: !!python/object/apply:tensorflow.python.keras.optimizer_v2.adam.Adam
+             optimizer: !!python/object/apply:tensorflow.keras.optimizers.Adam
                kwds:
                  lr: !!float 0.001 # 0.0001
                  beta_1: !!float 0.9
