@@ -145,7 +145,7 @@ class KerasModel(RasterModel):
         if not os.path.exists(self.base_directory):
             log.debug("Base directory does not exist: %s", self.base_directory)
             return None
-        final_model_path = os.path.join(self.base_directory, "model.hdf5")
+        final_model_path = os.path.join(self.base_directory, "model")
 
         if os.path.exists(final_model_path):
             log.debug("Loading final model from: %s", final_model_path)
@@ -156,7 +156,7 @@ class KerasModel(RasterModel):
         )
         if os.path.exists(checkpoint_directory):
             chkps = [
-                chk for chk in os.listdir(checkpoint_directory) if chk.endswith(".hdf5")
+                chk for chk in os.listdir(checkpoint_directory)
             ]
             if not chkps:
                 log.debug("No checkpoints found in %s", checkpoint_directory)
@@ -437,5 +437,5 @@ class KerasModel(RasterModel):
         log.info("Saving Keras model to %s", destination)
         if not os.path.exists(destination):
             os.makedirs(destination)
-        destination = os.path.join(destination, f"{self.model_name}.hdf5")
+        destination = os.path.join(destination, f"{self.model_name}")
         self.model.save(destination)
