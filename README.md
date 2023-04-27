@@ -17,5 +17,5 @@ Documentation for Hugin is available at https://hugin-eo.readthedocs.io/
 ## Acknowledgments
 
 This project was initially developed by direct support of the European Space Agency through the ML4EO project, with subsequent supported by:
- - European Space Agency through the FUSE4DL project
+ - European Space Agency through the EOSmith project
  - [FUSE4DL](http://fuse4dl.hpc.uvt.ro/) research project 432PED from 23/10/2020 (PN-III-P2-2.1-PED-2019-4878)
