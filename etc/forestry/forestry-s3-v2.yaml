@@ -31,8 +31,8 @@ configuration:
 
 data_source: !!python/object/apply:hugin.io.FSSpecFilesystemLoader
   kwds:
-    input_source: "s3://sage/public/datasets/paduri/dset-paduri-worldcover2021/training/train"
-    validation_source: "s3://sage/public/datasets/paduri/dset-paduri-worldcover2021/training/validation"
+    input_source: "s3://sage/public/datasets/paduri/paduri-worldcover2021/data/training/train"
+    validation_source: "s3://sage/public/datasets/paduri/paduri-worldcover2021/data/training/validation"
     data_pattern: '(?P<name>[0-9A-Za-z_]+)_(?P<type>.*)\.tif$'
     fsspec_storage_options:
       endpoint_url: 'https://storage.info.uvt.ro'
