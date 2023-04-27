@@ -27,15 +27,16 @@ import h5py
 import numpy as np
 import tqdm
 import zarr
+
 from traitlets import Dict, HasTraits, Unicode, observe
 
-from hugin.engine.core import RasterModel, metric_processor
-from hugin.io import ThreadedDataGenerator, ZarrArrayLoader
-from hugin.io.loader import NullFormatConverter
 
-from ..io import DataGenerator, DatasetGenerator
-from ..io.loader import adapt_shape_and_stride
-from .core import NullMerger, postprocessor
+from ..io.loader import NullFormatConverter
+
+from ..io.loader import adapt_shape_and_stride, DataGenerator, ThreadedDataGenerator
+from .core import NullMerger, postprocessor, RasterModel, metric_processor
+from ..io.rio_dataset_loaders import DatasetGenerator
+from ..io.zarr_loader import ZarrArrayLoader
 
 log = getLogger(__name__)
 
