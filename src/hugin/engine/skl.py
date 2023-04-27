@@ -20,7 +20,7 @@ from logging import getLogger
 
 import tqdm
 
-from hugin.engine.core import RasterModel
+from ..engine.core import RasterModel
 
 log = getLogger(__name__)
 

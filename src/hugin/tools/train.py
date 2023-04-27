@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 __license__ = """Copyright 2023 West University of Timisoara
 
        Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +22,7 @@ from urllib.parse import parse_qs, urlparse
 import fsspec
 import yaml
 
-from hugin.engine.scene import ArrayModel, RasterSceneTrainer
+from ..engine.scene import RasterSceneTrainer, ArrayModel
 
 try:
     from yaml import CLoader as Loader

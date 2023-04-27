@@ -16,9 +16,10 @@ __license__ = """Copyright 2023 West University of Timisoara
 
 import tensorflow as tf
 
-from hugin.tools.utils import dice_coef
+
 
 from .base import ModelBuilder
+from ...tools.utils import dice_coef
 
 
 class UNet(ModelBuilder):

@@ -20,7 +20,7 @@ import geopandas as gpd
 import numpy as np
 import rasterio.features
 
-from hugin.engine.core import RasterGenerator
+from ..engine.core import RasterGenerator
 
 
 class ComponentGenerator(RasterGenerator):

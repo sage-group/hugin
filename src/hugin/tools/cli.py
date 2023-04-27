@@ -23,8 +23,8 @@ from logging.config import dictConfig
 import yaml
 from pkg_resources import resource_stream
 
-from hugin.tools.predict import predict_handler
-from hugin.tools.train import train_handler
+from .predict import predict_handler
+from .train import train_handler
 
 try:
     from yaml import CLoader as Loader

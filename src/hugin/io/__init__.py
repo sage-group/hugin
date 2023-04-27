@@ -17,3 +17,4 @@ __license__ = """Copyright 2023 West University of Timisoara
 import logging
 
 log = logging.getLogger(__name__)
+from .dataset_loaders import FSSpecFilesystemLoader, FileLoader, FileSystemLoader # noqa: F401, E501, E402

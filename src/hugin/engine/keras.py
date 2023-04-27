@@ -21,9 +21,9 @@ from logging import getLogger
 import tensorflow as tf
 from traitlets import Integer, Unicode
 
-from hugin.engine.core import RasterModel
-from hugin.tools.callbacks import CSVLogger
-from hugin.tools.utils import import_model_builder
+from .core import RasterModel
+from ..tools.callbacks import CSVLogger
+from ..tools.utils import import_model_builder
 
 log = getLogger(__name__)
 
