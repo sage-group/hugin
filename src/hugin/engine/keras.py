@@ -127,11 +127,17 @@ class KerasModel(RasterModel):
                 self.model_builder_options.update(name=self.name)
         self.model = None
 
-    def predict(self, batch, batch_size=None):
+    def predict(self, batch, batch_size=None, verbose=0):
+        kws = {}
         if self.model is None:
             self.__load_model(self.model_path)
-        batch_size = batch_size if batch_size else self.batch_size
-        prediction = self.model.predict(batch, batch_size=batch_size)
+        if isinstance(batch, tf.keras.utils.Sequence):
+            pass
+        elif batch_size:
+            kws['batch_size'] = batch_size
+        else:
+            kws['batch_size'] = self.batch_size
+        prediction = self.model.predict(batch, **kws, verbose=verbose)
         return prediction
 
     def resolve_model_path(self, path):

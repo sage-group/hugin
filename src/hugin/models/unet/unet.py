@@ -34,10 +34,11 @@ class UNet(ModelBuilder):
         batch_normalization: float = None,
         axis: int = 3,
         padding: str = "same",
-        kinit: str = "RandomUniform",
+        kinit: str = "GlorotNormal",
         activation: str = "PReLU",
         mpad: int = 0,
         custom_objects: dict = {},
+        final_activation = 'softmax',
         **kwargs,
     ):
         custom_objects["dice_coef"] = dice_coef
@@ -53,18 +54,25 @@ class UNet(ModelBuilder):
         self.kinit = kinit
         self.activation = activation  # 'PReLU'
         self.mpad = mpad
+        self.final_activation = final_activation
 
     def __call__(self, input_shapes,
                  output_shapes,
                  output_channels,
                  name=None, crop=0):
         input_1_height, input_1_width, input_1_channels = input_shapes["input_1"]
-        inputs = tf.keras.layers.Input((input_1_height,
-                                        input_1_width,
-                                        input_1_channels))
+
+        inputs = tf.keras.layers.Input(
+            (
+                input_1_height,
+                input_1_width,
+                input_1_channels
+            )
+        )
+
 
         # Encoding
-        conv1_output_last, pool1 = self.encode_block_lstm(
+        conv1_output_last, pool1 = self.encode_block(
             32,
             inputs,
             self.kernel,
@@ -76,7 +84,7 @@ class UNet(ModelBuilder):
             dropout=self.dropout,
             trainable=not self.freeze_encoding,
         )
-        conv2_output_last, pool2 = self.encode_block_lstm(
+        conv2_output_last, pool2 = self.encode_block(
             64,
             pool1,
             self.kernel,
@@ -88,7 +96,7 @@ class UNet(ModelBuilder):
             dropout=self.dropout,
             trainable=not self.freeze_encoding,
         )
-        conv3_output_last, pool3 = self.encode_block_lstm(
+        conv3_output_last, pool3 = self.encode_block(
             128,
             pool2,
             self.kernel,
@@ -100,7 +108,7 @@ class UNet(ModelBuilder):
             dropout=self.dropout,
             trainable=not self.freeze_encoding,
         )
-        conv4_output_last, pool4 = self.encode_block_lstm(
+        conv4_output_last, pool4 = self.encode_block(
             256,
             pool3,
             self.kernel,
@@ -114,7 +122,7 @@ class UNet(ModelBuilder):
         )
 
         # Middle
-        conv5_output_last, _ = self.encode_block_lstm(
+        conv5_output_last, _ = self.encode_block(
             512,
             pool4,
             self.kernel,
@@ -189,17 +197,21 @@ class UNet(ModelBuilder):
         conv9 = tf.keras.layers.Cropping2D((self.mpad, self.mpad))(conv9)
 
         conv10 = tf.keras.layers.Convolution2D(
-            output_channels, (1, 1), activation="softmax", name="output_1"
+            output_channels, (1, 1)
         )(conv9)
+
+        last = tf.keras.layers.Activation(self.final_activation,
+                                          name="output_1",
+                                          trainable=not self.freeze_decoding)(conv10)
         model = tf.keras.Model(
             inputs=[
                 inputs,
             ],
-            outputs=[conv10],
+            outputs=[last],
         )
         return model
 
-    def encode_block_lstm(
+    def encode_block(
         self,
         size,
         inputs,
@@ -338,10 +350,12 @@ class UNet(ModelBuilder):
             trainable=trainable,
         )(conv2)
         conv3 = (
-            tf.keras.layers.BatchNormalization(trainable=trainable)(conv3)
+            tf.keras.layers.BatchNormalization(trainable=trainable,
+                                               name=f"decoder_batch_normalization_{size}")(conv3)
             if batch_normalization
             else conv2
         )
-        conv3 = tf.keras.layers.Activation(activation, trainable=trainable)(conv3)
+        conv3 = tf.keras.layers.Activation(activation, trainable=trainable,
+                                           name=f"decoder_activation_{size}")(conv3)
 
         return conv3
