@@ -16,7 +16,7 @@ __license__ = """Copyright 2023 West University of Timisoara
 
 
 class ModelBuilder(object):
-    def __init__(self, name: str, custom_objects: dict = {}):
+    def __init__(self, name: str = None, custom_objects: dict = {}):
         self.name = name
         self.custom_objects = custom_objects
 

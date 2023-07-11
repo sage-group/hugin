@@ -47,6 +47,7 @@ dependencies = [
 
 [project.scripts]
 hugin = "hugin.tools.cli:main"
+hugin-dir-to-stac = "hugin.tools.dir_to_stac:main"
 
 [project.urls]
 "Homepage" = "https://gitlab.dev.info.uvt.ro/sage/hugin"

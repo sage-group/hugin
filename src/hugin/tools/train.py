@@ -23,6 +23,7 @@ import fsspec
 import yaml
 
 from ..engine.scene import RasterSceneTrainer, ArrayModel
+from ..engine.v2.trainer import RasterScenePatchTrainer
 
 try:
     from yaml import CLoader as Loader
@@ -75,11 +76,12 @@ def train_handler(args):
     title = f"hugin train ({experiment_name})"
     setproctitle(title)
     log.info(f"workspace directory: {workspace_directory}")
-    if workspace_directory and trainer.base_directory is None:
-        trainer.base_directory = workspace_directory
-        trainer.destination = workspace_directory
 
     if isinstance(trainer, RasterSceneTrainer):
+        if workspace_directory and trainer.base_directory is None:
+            trainer.base_directory = workspace_directory
+            trainer.destination = workspace_directory
+
         if input_dir is not None:
             data_source.input_source = input_dir
 
@@ -93,6 +95,11 @@ def train_handler(args):
         dataset_loader.loop = True
         validation_loader.loop = True
         trainer.train_scenes(dataset_loader, validation_scenes=validation_loader)
+
+    elif isinstance(trainer, RasterScenePatchTrainer):
+        if workspace_directory and trainer.base_directory is None:
+            trainer.base_directory = workspace_directory
+        trainer.train(data_source)
 
     elif isinstance(trainer, ArrayModel):
         log.info("Training using an array model")
